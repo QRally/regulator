@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>THE REGULATOR v2.4</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root { --bg: #050505; --card: #111; --accent: #f1c40f; --safe: #2ecc71; --hold: #e67e22; --danger: #e74c3c; }
+        body { font-family: monospace; background: var(--bg); color: #eee; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .header { background: #1a1a1a; padding: 10px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; font-size: 12px; }
+        #map { flex: 1; min-height: 200px; border-bottom: 1px solid #333; filter: grayscale(1) invert(0.9); }
+        .dash { padding: 10px; flex: 2.5; overflow-y: auto; }
+        .clock { font-size: 3.2rem; text-align: center; font-weight: bold; margin: 0; letter-spacing: -2px; }
+        .status-pill { padding: 15px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.2rem; margin: 10px 0; border: 1px solid #333; }
+        .state-hold { background: rgba(230, 126, 34, 0.2); border-color: var(--hold); color: var(--hold); animation: pulse 1s infinite; }
+        .state-go { background: rgba(46, 204, 113, 0.2); border-color: var(--safe); color: var(--safe); }
+        .setup { background: var(--card); padding: 12px; border-radius: 8px; border: 1px solid #222; margin-bottom: 10px; }
+        input { background: #000; border: 1px solid #444; color: var(--accent); padding: 12px; width: calc(100% - 26px); margin-bottom: 8px; font-size: 14px; border-radius: 4px; }
+        .btn-add { background: var(--accent); color: #000; border: none; width: 100%; padding: 15px; font-weight: bold; text-transform: uppercase; border-radius: 4px; }
+        .ledger { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        td { padding: 10px 5px; border-bottom: 1px solid #111; }
+        .hit { color: var(--safe); font-weight: bold; }
+        .del { color: var(--danger); font-size: 10px; text-decoration: underline; background: none; border: none; padding: 5px; }
+        @keyframes pulse { 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <span style="color:var(--accent); font-weight:bold;">THE REGULATOR v2.4</span>
+        <span id="gps-stat">NO SIGNAL</span>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="dash">
+        <div class="clock" id="clock">00:00:00</div>
+        <div id="status-pill" class="status-pill">STANDBY</div>
+
+        <div class="setup">
+            <input type="text" id="cName" placeholder="POINT NAME (e.g. PC1)">
+            <input type="text" id="pasteCoords" placeholder="PASTE: 52.151894,-4.074807">
+            <button class="btn-add" onclick="addPoint()">ENGAGE GEOFENCE</button>
+        </div>
+
+        <table class="ledger">
+            <tbody id="ledger-body"></tbody>
+        </table>
+    </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    let map, car, points = [], holdTimer = null, holdCount = 10;
+
+    map = L.map('map', {zoomControl:false}).setView([52.18, -4.1], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    car = L.circleMarker([0,0], {color: 'red', radius: 6, fillOpacity: 1}).addTo(map);
+
+    setInterval(() => {
+        const now = new Date().toTimeString().split(' ')[0];
+        document.getElementById('clock').textContent = now;
+        checkLogic();
+    }, 400);
+
+    navigator.geolocation.watchPosition(pos => {
+        const cur = L.latLng(pos.coords.latitude, pos.coords.longitude);
+        document.getElementById('gps-stat').textContent = `ACC: ${pos.coords.accuracy.toFixed(1)}M`;
+        document.getElementById('gps-stat').style.color = pos.coords.accuracy < 10 ? '#2ecc71' : '#f1c40f';
+        car.setLatLng(cur);
+        map.panTo(cur);
+    }, null, {enableHighAccuracy: true});
+
+    function addPoint() {
+        const name = document.getElementById('cName').value || "PC";
+        const raw = document.getElementById('pasteCoords').value;
+        if(!raw.includes(',')) return alert("Error: Use Lat,Lon format");
+        
+        const [lat, lon] = raw.split(',').map(n => parseFloat(n.trim()));
+        const p = { id: Date.now(), name, lat, lon, time: null, inZone: false };
+        
+        points.push(p);
+        p.circle = L.circle([lat, lon], {radius: 100, color: '#f1c40f', weight: 2}).addTo(map);
+        
+        refreshLedger();
+        document.getElementById('cName').value = ""; document.getElementById('pasteCoords').value = "";
+    }
+
+    function checkLogic() {
+        const carPos = car.getLatLng();
+        points.forEach(p => {
+            if(p.time) return;
+            const dist = map.distance(carPos, [p.lat, p.lon]);
+            if(dist < 100) {
+                if(!p.inZone) { p.inZone = true; initiateHold(p); }
+            } else {
+                if(p.inZone && !p.time) { p.inZone = false; cancelHold(); }
+            }
+        });
+    }
+
+    function initiateHold(p) {
+        holdCount = 10;
+        statusUpdate(`HOLDING: ${holdCount}s`, "state-hold");
+        beep(440, 0.1);
+        holdTimer = setInterval(() => {
+            holdCount--;
+            if(holdCount > 0) { statusUpdate(`HOLDING: ${holdCount}s`, "state-hold"); }
+            else { completeControl(p); }
+        }, 1000);
+    }
+
+    function cancelHold() {
+        clearInterval(holdTimer);
+        statusUpdate("LEFT ZONE - RE-ENTER", "");
+    }
+
+    function completeControl(p) {
+        clearInterval(holdTimer);
+        p.time = new Date().toTimeString().split(' ')[0];
+        p.circle.setStyle({color: '#2ecc71', fillColor: '#2ecc71'});
+        statusUpdate("SECURED - GO!", "state-go");
+        beep(880, 0.3);
+        refreshLedger();
+    }
+
+    function statusUpdate(txt, cls) {
+        const s = document.getElementById('status-pill');
+        s.textContent = txt;
+        s.className = `status-pill ${cls}`;
+    }
+
+    function refreshLedger() {
+        document.getElementById('ledger-body').innerHTML = points.slice().reverse().map(p => `
+            <tr class="${p.time ? 'hit' : ''}">
+                <td>${p.name}</td>
+                <td>${p.time || '---'}</td>
+                <td><button class="del" onclick="removePt(${p.id})">DEL</button></td>
+            </tr>
+        `).join('');
+    }
+
+    function removePt(id) {
+        if(confirm("Remove Point?")) {
+            const i = points.findIndex(p => p.id === id);
+            map.removeLayer(points[i].circle);
+            points.splice(i, 1);
+            refreshLedger();
+        }
+    }
+
+    function beep(freq, dur) {
+        const a = new (window.AudioContext || window.webkitAudioContext)();
+        const o = a.createOscillator();
+        o.type='sine'; o.frequency.setValueAtTime(freq, a.currentTime);
+        o.connect(a.destination); o.start(); o.stop(a.currentTime+dur);
+    }
+</script>
+</body>
+</html>
