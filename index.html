@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>THE REGULATOR v2.8</title>
+    <title>THE REGULATOR v2.9 | FIREBASE</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --bg: #050505; --card: #111; --accent: #f1c40f; --safe: #2ecc71; --hold: #e67e22; --danger: #e74c3c; }
@@ -12,26 +12,21 @@
         #map { flex: 1; min-height: 180px; filter: grayscale(1) invert(0.9); }
         .dash { padding: 10px; flex: 3; overflow-y: auto; }
         .clock { font-size: 3rem; text-align: center; font-weight: bold; margin: 0; }
-        
-        .status-pill { padding: 15px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.2rem; margin: 10px 0; border: 2px solid #333; text-transform: uppercase; min-height: 1.5rem; }
-        .state-wait { background: rgba(241, 196, 15, 0.1); border-color: var(--accent); color: var(--accent); }
-        .state-hold { background: rgba(230, 126, 34, 0.2); border-color: var(--hold); color: var(--hold); animation: blink 1s infinite; }
+        .status-pill { padding: 15px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.2rem; margin: 10px 0; border: 2px solid #333; text-transform: uppercase; }
+        .state-hold { background: rgba(230, 126, 34, 0.2); border-color: var(--hold); color: var(--hold); }
         .state-go { background: rgba(46, 204, 113, 0.2); border-color: var(--safe); color: var(--safe); }
-
         .setup { background: var(--card); padding: 12px; border-radius: 8px; border: 1px solid #222; margin-bottom: 10px; }
-        input { background: #000; border: 1px solid #444; color: var(--accent); padding: 12px; border-radius: 4px; font-size: 14px; margin-bottom: 5px; width: calc(100% - 28px); }
+        input { background: #000; border: 1px solid #444; color: var(--accent); padding: 12px; border-radius: 4px; font-size: 14px; margin-bottom: 5px; width: calc(100% - 26px); }
         .btn-add { background: var(--accent); color: #000; border: none; width: 100%; padding: 15px; font-weight: bold; text-transform: uppercase; cursor: pointer; }
-        
         .ledger { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
         td { padding: 10px 5px; border-bottom: 1px solid #111; }
-        @keyframes blink { 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <span style="color:var(--accent); font-weight:bold;">REGULATOR v2.8</span>
-        <span id="gps-stat">ACC: -- | SPD: --</span>
+        <span style="color:var(--accent); font-weight:bold;">REGULATOR v2.9</span>
+        <span id="cloud-stat" style="color:var(--danger)">CLOUD DISCONNECTED</span>
     </div>
 
     <div id="map"></div>
@@ -41,24 +36,57 @@
         <div id="status-pill" class="status-pill">STANDBY</div>
 
         <div class="setup">
-            <input type="text" id="carNum" placeholder="CAR #">
+            <input type="text" id="carNum" placeholder="CAR # (e.g. 7)">
             <input type="text" id="cName" placeholder="POINT ID">
-            <input type="text" id="pasteCoords" placeholder="PASTE: 52.151, -4.074">
+            <input type="text" id="pasteCoords" placeholder="COORDS (52.18, -4.1)">
             <button class="btn-add" onclick="addPoint()">ENGAGE GEOFENCE</button>
         </div>
 
         <table class="ledger">
             <tbody id="ledger-body"></tbody>
         </table>
-
-        <button onclick="submitToOrganizers()" style="background:var(--safe); border:none; width:100%; padding:18px; font-weight:bold; margin-top:10px; border-radius:4px; color:black;">SEND TO RESULTS TEAM</button>
     </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCLi3NMmoJJCeJFGU4d-N4R47D0qM1r8nU",
+        authDomain: "the-regulator-rally.firebaseapp.com",
+        databaseURL: "https://the-regulator-rally-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "the-regulator-rally",
+        storageBucket: "the-regulator-rally.appspot.com",
+        messagingSenderId: "1026958520151",
+        appId: "1:1026958520151:web:166551b9b18361668f447d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    document.getElementById('cloud-stat').textContent = "CLOUD READY";
+    document.getElementById('cloud-stat').style.color = "#2ecc71";
+
+    // GLOBAL FUNCTIONS FOR UI
+    window.pushToCloud = function(car, point, time) {
+        if(!car) car = "Unknown";
+        const resultRef = ref(db, 'Rally_Test/Car_' + car);
+        update(resultRef, {
+            [point]: time
+        }).then(() => {
+            console.log("Cloud Updated Successfully");
+        }).catch((error) => {
+            console.error("Cloud Error:", error);
+            document.getElementById('cloud-stat').textContent = "SYNC ERROR";
+            document.getElementById('cloud-stat').style.color = "red";
+        });
+    };
+</script>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     let map, carMarker, points = [], holdTimer = null, holdCount = 10, currentSpeed = 0;
 
-    map = L.map('map', {zoomControl:false}).setView([52.18, -4.1], 15);
+    map = L.map('map', {zoomControl:false}).setView([52.18, -4.1], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     carMarker = L.circleMarker([0,0], {color: 'red', radius: 6, fillOpacity: 1}).addTo(map);
 
@@ -70,7 +98,6 @@
     navigator.geolocation.watchPosition(pos => {
         const cur = L.latLng(pos.coords.latitude, pos.coords.longitude);
         currentSpeed = pos.coords.speed ? (pos.coords.speed * 2.23694) : 0;
-        document.getElementById('gps-stat').textContent = `ACC: ${pos.coords.accuracy.toFixed(1)}M | SPD: ${currentSpeed.toFixed(0)}MPH`;
         carMarker.setLatLng(cur);
         map.panTo(cur);
     }, null, {enableHighAccuracy: true});
@@ -82,107 +109,66 @@
         const [lat, lon] = raw.split(',').map(n => parseFloat(n.trim()));
         const p = { id: Date.now(), name, lat, lon, time: null, inZone: false };
         points.push(p);
-        p.circle = L.circle([lat, lon], {radius: 50, color: '#f1c40f', weight: 2}).addTo(map); // 50m Radius
+        p.circle = L.circle([lat, lon], {radius: 50, color: '#f1c40f', weight: 2}).addTo(map);
         refreshLedger();
-        document.getElementById('cName').value = ""; document.getElementById('pasteCoords').value = "";
     }
 
     function checkLogic() {
         const carPos = carMarker.getLatLng();
-        let activePointFound = false;
-
+        let inZone = false;
         points.forEach(p => {
             if (p.time) return;
-
-            const dist = map.distance(carPos, [p.lat, p.lon]);
-
-            if (dist < 50) { // Precision Radius
-                activePointFound = true;
-                if (!p.inZone) {
-                    if (currentSpeed < 5) {
-                        p.inZone = true;
-                        initiateHold(p);
-                    } else {
-                        statusUpdate("SLOW DOWN TO ENGAGE", "state-wait");
-                    }
+            if (map.distance(carPos, [p.lat, p.lon]) < 50) {
+                inZone = true;
+                if (!p.inZone && currentSpeed < 5) {
+                    p.inZone = true;
+                    initiateHold(p);
                 }
-            } else {
-                if (p.inZone && !p.time) {
-                    p.inZone = false;
-                    cancelHold();
-                }
+            } else if (p.inZone && !p.time) {
+                p.inZone = false;
+                clearInterval(holdTimer);
+                statusUpdate("STANDBY", "");
             }
         });
-
-        // AUTO-RESET: If not in a zone and not currently counting down
-        if (!activePointFound && !holdTimer) {
-            statusUpdate("STANDBY", "");
-        }
     }
 
     function initiateHold(p) {
-        if (holdTimer) clearInterval(holdTimer);
         holdCount = 10;
         statusUpdate(`HOLDING: ${holdCount}s`, "state-hold");
-        
         holdTimer = setInterval(() => {
             holdCount--;
-            if (holdCount > 0) {
-                statusUpdate(`HOLDING: ${holdCount}s`, "state-hold");
-            } else {
-                const finalDist = map.distance(carMarker.getLatLng(), [p.lat, p.lon]);
-                if (finalDist < 50) { completeControl(p); } 
-                else { cancelHold(); }
-            }
+            if (holdCount > 0) statusUpdate(`HOLDING: ${holdCount}s`, "state-hold");
+            else completeControl(p);
         }, 1000);
-    }
-
-    function cancelHold() {
-        clearInterval(holdTimer);
-        holdTimer = null;
-        statusUpdate("STANDBY", "");
     }
 
     function completeControl(p) {
         clearInterval(holdTimer);
-        holdTimer = null; // Reset handle so AUTO-RESET logic can take over
-        p.time = new Date().toTimeString().split(' ')[0];
+        const timeNow = new Date().toTimeString().split(' ')[0];
+        p.time = timeNow;
         p.circle.setStyle({color: '#2ecc71', fillColor: '#2ecc71'});
         statusUpdate("SECURED - GO!", "state-go");
-        beep(880, 0.3);
+        
+        // --- THE FIREBASE PUSH ---
+        const car = document.getElementById('carNum').value;
+        if(window.pushToCloud) {
+            window.pushToCloud(car, p.name, timeNow);
+        }
+        
         refreshLedger();
     }
 
     function statusUpdate(txt, cls) {
         const s = document.getElementById('status-pill');
-        if (s.textContent !== txt) {
-            s.textContent = txt; 
-            s.className = `status-pill ${cls}`;
-        }
+        s.textContent = txt; s.className = `status-pill ${cls}`;
     }
 
     function refreshLedger() {
         document.getElementById('ledger-body').innerHTML = points.slice().reverse().map(p => `
             <tr style="color:${p.time ? '#2ecc71' : '#555'}">
-                <td>${p.name}</td>
-                <td>${p.time || 'PENDING'}</td>
-                <td>${p.time ? 'SECURED' : '...'}</td>
+                <td>${p.name}</td><td>${p.time || 'PENDING'}</td>
             </tr>
         `).join('');
-    }
-
-    function beep(freq, dur) {
-        const a = new (window.AudioContext || window.webkitAudioContext)();
-        const o = a.createOscillator();
-        o.type='sine'; o.frequency.setValueAtTime(freq, a.currentTime);
-        o.connect(a.destination); o.start(); o.stop(a.currentTime+dur);
-    }
-
-    function submitToOrganizers() {
-        const car = document.getElementById('carNum').value || "00";
-        const res = points.filter(p => p.time).map(p => `${p.name}:${p.time}`).join('|');
-        if(!res) return alert("No data.");
-        window.location.href = `sms:?body=REGULATOR:CAR_${car}[${res}]`;
     }
 </script>
 </body>
