@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>THE REGULATOR v2.6</title>
+    <title>THE REGULATOR v2.7</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --bg: #050505; --card: #111; --accent: #f1c40f; --safe: #2ecc71; --hold: #e67e22; --danger: #e74c3c; }
@@ -12,12 +12,16 @@
         #map { flex: 1; min-height: 180px; filter: grayscale(1) invert(0.9); }
         .dash { padding: 10px; flex: 3; overflow-y: auto; }
         .clock { font-size: 3rem; text-align: center; font-weight: bold; margin: 0; }
-        .status-pill { padding: 15px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.2rem; margin: 10px 0; border: 1px solid #333; text-transform: uppercase; }
+        
+        .status-pill { padding: 15px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.2rem; margin: 10px 0; border: 2px solid #333; text-transform: uppercase; }
+        .state-wait { background: rgba(241, 196, 15, 0.1); border-color: var(--accent); color: var(--accent); }
         .state-hold { background: rgba(230, 126, 34, 0.2); border-color: var(--hold); color: var(--hold); animation: blink 1s infinite; }
         .state-go { background: rgba(46, 204, 113, 0.2); border-color: var(--safe); color: var(--safe); }
+
         .setup { background: var(--card); padding: 12px; border-radius: 8px; border: 1px solid #222; margin-bottom: 10px; }
         input { background: #000; border: 1px solid #444; color: var(--accent); padding: 12px; border-radius: 4px; font-size: 14px; margin-bottom: 5px; width: calc(100% - 28px); }
-        .btn-add { background: var(--accent); color: #000; border: none; width: 100%; padding: 15px; font-weight: bold; text-transform: uppercase; margin-top: 5px; cursor: pointer; }
+        .btn-add { background: var(--accent); color: #000; border: none; width: 100%; padding: 15px; font-weight: bold; text-transform: uppercase; cursor: pointer; }
+        
         .ledger { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
         td { padding: 10px 5px; border-bottom: 1px solid #111; }
         @keyframes blink { 50% { opacity: 0.5; } }
@@ -26,8 +30,8 @@
 <body>
 
     <div class="header">
-        <span style="color:var(--accent); font-weight:bold;">REGULATOR v2.6</span>
-        <span id="gps-stat">ACC: --</span>
+        <span style="color:var(--accent); font-weight:bold;">REGULATOR v2.7</span>
+        <span id="gps-stat">ACC: -- | SPD: --</span>
     </div>
 
     <div id="map"></div>
@@ -38,7 +42,7 @@
 
         <div class="setup">
             <input type="text" id="carNum" placeholder="CAR #">
-            <input type="text" id="cName" placeholder="POINT ID (e.g. TC1)">
+            <input type="text" id="cName" placeholder="POINT ID">
             <input type="text" id="pasteCoords" placeholder="PASTE: 52.151, -4.074">
             <button class="btn-add" onclick="addPoint()">ENGAGE GEOFENCE</button>
         </div>
@@ -47,12 +51,12 @@
             <tbody id="ledger-body"></tbody>
         </table>
 
-        <button onclick="submitToOrganizers()" style="background:var(--safe); border:none; width:100%; padding:18px; font-weight:bold; margin-top:10px; border-radius:4px;">SEND TO RESULTS TEAM</button>
+        <button onclick="submitToOrganizers()" style="background:var(--safe); border:none; width:100%; padding:18px; font-weight:bold; margin-top:10px; border-radius:4px; color:black;">SEND TO RESULTS TEAM</button>
     </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    let map, carMarker, points = [], holdTimer = null, holdCount = 10;
+    let map, carMarker, points = [], holdTimer = null, holdCount = 10, currentSpeed = 0;
 
     map = L.map('map', {zoomControl:false}).setView([52.18, -4.1], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -65,7 +69,10 @@
 
     navigator.geolocation.watchPosition(pos => {
         const cur = L.latLng(pos.coords.latitude, pos.coords.longitude);
-        document.getElementById('gps-stat').textContent = `ACC: ${pos.coords.accuracy.toFixed(1)}M`;
+        // Convert m/s to mph
+        currentSpeed = pos.coords.speed ? (pos.coords.speed * 2.23694) : 0;
+        
+        document.getElementById('gps-stat').textContent = `ACC: ${pos.coords.accuracy.toFixed(1)}M | SPD: ${currentSpeed.toFixed(0)}MPH`;
         carMarker.setLatLng(cur);
         map.panTo(cur);
     }, null, {enableHighAccuracy: true});
@@ -82,18 +89,21 @@
         document.getElementById('cName').value = ""; document.getElementById('pasteCoords').value = "";
     }
 
-    // --- UPDATED HARD-LOCK LOGIC ---
     function checkLogic() {
         const carPos = carMarker.getLatLng();
         points.forEach(p => {
             if (p.time) return;
-
             const dist = map.distance(carPos, [p.lat, p.lon]);
 
             if (dist < 100) {
                 if (!p.inZone) {
-                    p.inZone = true;
-                    initiateHold(p);
+                    // STABILITY CHECK: Only start if speed is < 5 MPH
+                    if (currentSpeed < 5) {
+                        p.inZone = true;
+                        initiateHold(p);
+                    } else {
+                        statusUpdate("SLOW DOWN TO ENGAGE", "state-wait");
+                    }
                 }
             } else {
                 if (p.inZone && !p.time) {
@@ -105,7 +115,7 @@
     }
 
     function initiateHold(p) {
-        if (holdTimer) clearInterval(holdTimer); // Clear any ghost timers
+        if (holdTimer) clearInterval(holdTimer);
         holdCount = 10;
         statusUpdate(`HOLDING: ${holdCount}s`, "state-hold");
         
@@ -114,20 +124,16 @@
             if (holdCount > 0) {
                 statusUpdate(`HOLDING: ${holdCount}s`, "state-hold");
             } else {
-                // FINAL CHECK: Only stamp if they are STILL in the zone at 0s
                 const finalDist = map.distance(carMarker.getLatLng(), [p.lat, p.lon]);
-                if (finalDist < 100) {
-                    completeControl(p);
-                } else {
-                    cancelHold(); 
-                }
+                if (finalDist < 100) { completeControl(p); } 
+                else { cancelHold(); }
             }
         }, 1000);
     }
 
     function cancelHold() {
         clearInterval(holdTimer);
-        statusUpdate("RE-ENTER ZONE", "");
+        statusUpdate("STANDBY", "");
     }
 
     function completeControl(p) {
