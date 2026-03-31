@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>THE REGULATOR v3.0 | PURIST</title>
+    <title>THE REGULATOR v3.0 | MASTER</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --bg: #050505; --card: #111; --accent: #f1c40f; --safe: #2ecc71; --hold: #e67e22; }
@@ -12,11 +12,11 @@
         #map { flex: 2; filter: grayscale(1) invert(0.9); }
         .dash { padding: 15px; flex: 1.5; overflow-y: auto; display: flex; flex-direction: column; }
         .clock { font-size: 3.2rem; text-align: center; font-weight: bold; margin-bottom: 5px; }
-        .status-pill { padding: 20px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.3rem; border: 2px solid #333; text-transform: uppercase; margin-bottom: 15px; }
+        .status-pill { padding: 20px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.3rem; border: 2px solid #333; text-transform: uppercase; margin-bottom: 15px; min-height: 1.5rem; }
         .state-hold { background: rgba(230, 126, 34, 0.2); border-color: var(--hold); color: var(--hold); animation: pulse 1s infinite; }
         .state-go { background: rgba(46, 204, 113, 0.2); border-color: var(--safe); color: var(--safe); }
         .car-info { background: var(--card); padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #222; text-align: center; }
-        .ledger { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .ledger { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 5px; }
         td { padding: 12px 5px; border-bottom: 1px solid #111; }
         @keyframes pulse { 50% { opacity: 0.6; } }
     </style>
@@ -24,7 +24,7 @@
 <body>
 
     <div class="header">
-        <span id="event-name" style="color:var(--accent); font-weight:bold;">LOADING ROUTE...</span>
+        <span id="event-name" style="color:var(--accent); font-weight:bold;">SYNCING ROUTE...</span>
         <span id="cloud-stat" style="color:var(--safe)">CLOUD READY</span>
     </div>
 
@@ -75,20 +75,25 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     carMarker = L.circleMarker([0,0], {color: 'red', radius: 6, fillOpacity: 1}).addTo(map);
 
-    // LOAD THE OFFICIAL ROUTE FROM GITHUB
     async function loadRoute() {
+        const routeUrl = 'https://qrally.github.io/regulator/route.json?t=' + Date.now();
         try {
-            const resp = await fetch('https://qrally.github.io/regulator/route.json');
+            const resp = await fetch(routeUrl);
+            if (!resp.ok) throw new Error('Route file not found');
             const data = await resp.json();
             document.getElementById('event-name').textContent = data.event_name;
             
+            points = []; // Reset local array
             data.controls.forEach(c => {
                 const [lat, lon] = c.coords.split(',').map(n => parseFloat(n.trim()));
-                points.push({ name: c.id, lat, lon, desc: c.description, time: null, inZone: false });
+                points.push({ name: c.id, lat, lon, desc: c.description || "", time: null, inZone: false });
                 L.circle([lat, lon], {radius: 50, color: '#444', weight: 1, fillOpacity: 0.1}).addTo(map);
             });
             refreshLedger();
-        } catch (e) { document.getElementById('event-name').textContent = "OFFLINE - CHECK CONNECTION"; }
+        } catch (e) { 
+            document.getElementById('event-name').textContent = "OFFLINE - RETRYING..."; 
+            setTimeout(loadRoute, 4000); // Retry every 4 seconds
+        }
     }
 
     navigator.geolocation.watchPosition(pos => {
@@ -105,26 +110,35 @@
 
     function checkLogic() {
         const carPos = carMarker.getLatLng();
-        let active = false;
+        let activePointInRange = false;
+
         points.forEach(p => {
             if (p.time) return;
             const dist = map.distance(carPos, [p.lat, p.lon]);
+            
             if (dist < 50) {
-                active = true;
-                if (!p.inZone && currentSpeed < 5) {
-                    p.inZone = true;
-                    startHold(p);
+                activePointInRange = true;
+                if (!p.inZone) {
+                    if (currentSpeed < 5) {
+                        p.inZone = true;
+                        startHold(p);
+                    } else {
+                        statusUpdate("SLOW DOWN TO ENGAGE", "state-wait");
+                    }
                 }
             } else if (p.inZone && !p.time) {
                 p.inZone = false;
                 clearInterval(holdTimer);
+                holdTimer = null;
                 statusUpdate("STANDBY", "");
             }
         });
-        if (!active && !holdTimer) statusUpdate("STANDBY", "");
+
+        if (!activePointInRange && !holdTimer) statusUpdate("STANDBY", "");
     }
 
     function startHold(p) {
+        if (holdTimer) clearInterval(holdTimer);
         let count = 10;
         statusUpdate(`HOLDING: ${count}s`, "state-hold");
         holdTimer = setInterval(() => {
@@ -133,9 +147,10 @@
             else {
                 clearInterval(holdTimer);
                 holdTimer = null;
-                p.time = new Date().toTimeString().split(' ')[0];
+                const timeNow = new Date().toTimeString().split(' ')[0];
+                p.time = timeNow;
                 statusUpdate("SECURED - GO!", "state-go");
-                window.pushToCloud(document.getElementById('carNum').value, p.name, p.time);
+                window.pushToCloud(document.getElementById('carNum').value, p.name, timeNow);
                 refreshLedger();
             }
         }, 1000);
@@ -143,13 +158,16 @@
 
     function statusUpdate(txt, cls) {
         const s = document.getElementById('status-pill');
-        s.textContent = txt; s.className = `status-pill ${cls}`;
+        if(s.textContent !== txt) {
+            s.textContent = txt; 
+            s.className = `status-pill ${cls}`;
+        }
     }
 
     function refreshLedger() {
         document.getElementById('ledger-body').innerHTML = points.map(p => `
             <tr style="color:${p.time ? '#2ecc71' : '#555'}">
-                <td>${p.name}</td>
+                <td style="font-weight:bold;">${p.name}</td>
                 <td>${p.time || p.desc}</td>
             </tr>
         `).join('');
