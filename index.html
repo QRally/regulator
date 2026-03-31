@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>THE REGULATOR v3.0 | MASTER</title>
+    <title>THE REGULATOR v3.1 | STABLE</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --bg: #050505; --card: #111; --accent: #f1c40f; --safe: #2ecc71; --hold: #e67e22; }
         body { font-family: monospace; background: var(--bg); color: #eee; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         .header { background: #1a1a1a; padding: 10px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; font-size: 11px; }
-        #map { flex: 2; filter: grayscale(1) invert(0.9); }
+        #map { flex: 2; background: #000; filter: grayscale(1) invert(0.9); }
         .dash { padding: 15px; flex: 1.5; overflow-y: auto; display: flex; flex-direction: column; }
         .clock { font-size: 3.2rem; text-align: center; font-weight: bold; margin-bottom: 5px; }
-        .status-pill { padding: 20px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.3rem; border: 2px solid #333; text-transform: uppercase; margin-bottom: 15px; min-height: 1.5rem; }
+        .status-pill { padding: 20px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.3rem; border: 2px solid #333; text-transform: uppercase; margin-bottom: 15px; min-height: 1.5rem; transition: 0.3s; }
         .state-hold { background: rgba(230, 126, 34, 0.2); border-color: var(--hold); color: var(--hold); animation: pulse 1s infinite; }
         .state-go { background: rgba(46, 204, 113, 0.2); border-color: var(--safe); color: var(--safe); }
         .car-info { background: var(--card); padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #222; text-align: center; }
@@ -34,7 +34,7 @@
         <div class="clock" id="clock">00:00:00</div>
         
         <div class="car-info">
-            <input type="text" id="carNum" placeholder="ENTER CAR #" style="background:transparent; border:none; color:var(--accent); text-align:center; font-size:1.2rem; width:100%; outline:none;">
+            <input type="text" id="carNum" placeholder="CAR #" style="background:transparent; border:none; color:var(--accent); text-align:center; font-size:1.2rem; width:100%; outline:none;">
         </div>
 
         <div id="status-pill" class="status-pill">STANDBY</div>
@@ -71,42 +71,48 @@
 <script>
     let map, carMarker, points = [], holdTimer = null, currentSpeed = 0;
 
-    map = L.map('map', {zoomControl:false}).setView([52.18, -4.1], 15);
+    // Initialize Map - Default view (will be updated by route)
+    map = L.map('map', {zoomControl:false}).setView([52.18, -4.1], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     carMarker = L.circleMarker([0,0], {color: 'red', radius: 6, fillOpacity: 1}).addTo(map);
 
     async function loadRoute() {
-    async function loadRoute() {
-    // Look for the file in the same folder as this HTML file
-    const routeUrl = './route.json?t=' + Date.now();
-    
-    try {
-        const resp = await fetch(routeUrl);
-        if (!resp.ok) throw new Error('Route file not found');
-        const data = await resp.json();
-        
-        document.getElementById('event-name').textContent = data.event_name;
-        
-        points = []; // Reset local array
-        data.controls.forEach(c => {
-            const [lat, lon] = c.coords.split(',').map(n => parseFloat(n.trim()));
-            points.push({ name: c.id, lat, lon, desc: c.description || "", time: null, inZone: false });
-            L.circle([lat, lon], {radius: 50, color: '#444', weight: 1, fillOpacity: 0.1}).addTo(map);
-        });
-        refreshLedger();
-    } catch (e) { 
-        console.error("Fetch failed:", e);
-        document.getElementById('event-name').textContent = "OFFLINE - RETRYING..."; 
-        setTimeout(loadRoute, 4000); 
-}
+        // Fetch from same directory
+        const routeUrl = './route.json?t=' + Date.now();
+        try {
+            const resp = await fetch(routeUrl);
+            if (!resp.ok) throw new Error('File Not Found');
+            const data = await resp.json();
+            
+            document.getElementById('event-name').textContent = data.event_name;
+            points = []; 
 
+            data.controls.forEach(c => {
+                const [lat, lon] = c.coords.split(',').map(n => parseFloat(n.trim()));
+                points.push({ name: c.id, lat, lon, desc: c.description || "", time: null, inZone: false });
+                L.circle([lat, lon], {radius: 50, color: '#444', weight: 1, fillOpacity: 0.1}).addTo(map);
+            });
+
+            // WAKE UP THE MAP: Center on the first control
+            if(points.length > 0) {
+                map.setView([points[0].lat, points[0].lon], 15);
+            }
+
+            refreshLedger();
+            console.log("Route Loaded Successfully");
+        } catch (e) { 
+            console.error("Fetch failed:", e);
+            document.getElementById('event-name').textContent = "RETRYING SYNC..."; 
+            setTimeout(loadRoute, 4000); 
+        }
     }
 
     navigator.geolocation.watchPosition(pos => {
         const cur = L.latLng(pos.coords.latitude, pos.coords.longitude);
         currentSpeed = pos.coords.speed ? (pos.coords.speed * 2.23694) : 0;
         carMarker.setLatLng(cur);
-        map.panTo(cur);
+        // Only pan to car if we aren't in a 'black screen' state
+        if (points.length > 0) map.panTo(cur);
     }, null, {enableHighAccuracy: true});
 
     setInterval(() => {
