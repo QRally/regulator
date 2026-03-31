@@ -76,24 +76,30 @@
     carMarker = L.circleMarker([0,0], {color: 'red', radius: 6, fillOpacity: 1}).addTo(map);
 
     async function loadRoute() {
-        const routeUrl = 'https://qrally.github.io/regulator/route.json?t=' + Date.now();
-        try {
-            const resp = await fetch(routeUrl);
-            if (!resp.ok) throw new Error('Route file not found');
-            const data = await resp.json();
-            document.getElementById('event-name').textContent = data.event_name;
-            
-            points = []; // Reset local array
-            data.controls.forEach(c => {
-                const [lat, lon] = c.coords.split(',').map(n => parseFloat(n.trim()));
-                points.push({ name: c.id, lat, lon, desc: c.description || "", time: null, inZone: false });
-                L.circle([lat, lon], {radius: 50, color: '#444', weight: 1, fillOpacity: 0.1}).addTo(map);
-            });
-            refreshLedger();
-        } catch (e) { 
-            document.getElementById('event-name').textContent = "OFFLINE - RETRYING..."; 
-            setTimeout(loadRoute, 4000); // Retry every 4 seconds
-        }
+    async function loadRoute() {
+    // Look for the file in the same folder as this HTML file
+    const routeUrl = './route.json?t=' + Date.now();
+    
+    try {
+        const resp = await fetch(routeUrl);
+        if (!resp.ok) throw new Error('Route file not found');
+        const data = await resp.json();
+        
+        document.getElementById('event-name').textContent = data.event_name;
+        
+        points = []; // Reset local array
+        data.controls.forEach(c => {
+            const [lat, lon] = c.coords.split(',').map(n => parseFloat(n.trim()));
+            points.push({ name: c.id, lat, lon, desc: c.description || "", time: null, inZone: false });
+            L.circle([lat, lon], {radius: 50, color: '#444', weight: 1, fillOpacity: 0.1}).addTo(map);
+        });
+        refreshLedger();
+    } catch (e) { 
+        console.error("Fetch failed:", e);
+        document.getElementById('event-name').textContent = "OFFLINE - RETRYING..."; 
+        setTimeout(loadRoute, 4000); 
+}
+
     }
 
     navigator.geolocation.watchPosition(pos => {
