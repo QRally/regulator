@@ -1,0 +1,17 @@
+{
+  "event_name": "April 12-Car (The Purist)",
+  "controls": [
+    {
+      "id": "TC 1",
+      "type": "TIME",
+      "grid_ref": "SN 123 456",
+      "coords": "52.146832,-4.056990"
+    },
+    {
+      "id": "PC 1",
+      "type": "PASSAGE",
+      "grid_ref": "SN 128 459",
+      "coords": "52.151894,-4.074807"
+    }
+  ]
+}
