@@ -4,14 +4,12 @@
     {
       "id": "TC 1",
       "type": "TIME",
-      "grid_ref": "SN 54285 53830",
       "coords": "52.163347,-4.131718",
       "target_mins": 10
     },
     {
       "id": "PC 1",
       "type": "PASSAGE",
-      "grid_ref": "SN 54600 55830",
       "coords": "52.181603,-4.128260",
       "target_mins": 25
     }
