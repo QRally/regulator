@@ -1,17 +1,29 @@
 {
-  "event_name": "April 12-Car (RODGE)",
+  "event_name": "RALI MYNYDD DDU",
   "controls": [
     {
       "id": "TC 1",
       "type": "TIME",
-      "coords": "52.163347,-4.131718",
-      "target_mins": 10
+      "coords": "51.968881,-3.869561",
+      "target_mins": 15
     },
     {
-      "id": "PC 1",
+      "id": "PC 1 ",
       "type": "PASSAGE",
-      "coords": "52.181603,-4.128260",
-      "target_mins": 25
+      "coords": "51.998770,-3.767130",
+      "target_mins": 15
+    },
+    {
+      "id": "PC 2",
+      "type": "PASSAGE",
+      "coords": "51.980957,-3.698417",
+      "target_mins": 15
+    },
+    {
+      "id": "TC 2",
+      "type": "TIME",
+      "coords": "51.957546,-3.652091",
+      "target_mins": 15
     }
   ]
 }
