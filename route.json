@@ -19,14 +19,9 @@
       "coords": "53.280472,-4.279259",
       "target_mins": 15
     },
+  
     {
       "id": "TC 2",
-      "type": "TIME",
-      "coords": "",
-      "target_mins": 15
-    },
-    {
-      "id": "TC 3",
       "type": "TIME",
       "coords": "53.273149,-4.267257",
       "target_mins": 15
