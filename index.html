@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>THE REGULATOR v3.1 | STABLE</title>
+    <title>THE REGULATOR v3.2 | MARSHAL</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --bg: #050505; --card: #111; --accent: #f1c40f; --safe: #2ecc71; --hold: #e67e22; }
@@ -12,13 +12,21 @@
         #map { flex: 2; background: #000; filter: grayscale(1) invert(0.9); }
         .dash { padding: 15px; flex: 1.5; overflow-y: auto; display: flex; flex-direction: column; }
         .clock { font-size: 3.2rem; text-align: center; font-weight: bold; margin-bottom: 5px; }
-        .status-pill { padding: 20px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.3rem; border: 2px solid #333; text-transform: uppercase; margin-bottom: 15px; min-height: 1.5rem; transition: 0.3s; }
-        .state-hold { background: rgba(230, 126, 34, 0.2); border-color: var(--hold); color: var(--hold); animation: pulse 1s infinite; }
-        .state-go { background: rgba(46, 204, 113, 0.2); border-color: var(--safe); color: var(--safe); }
+        
+        /* TACTICAL STATUS BAR */
+        .status-pill { 
+            padding: 25px; border-radius: 8px; text-align: center; font-weight: 900; font-size: 1.8rem; 
+            border: 3px solid #333; text-transform: uppercase; margin-bottom: 15px; transition: all 0.2s ease;
+        }
+        .state-searching { background: #111; color: #444; border-color: #222; }
+        .state-at-point { background: rgba(241, 196, 15, 0.2); color: var(--accent); border-color: var(--accent); animation: pulse 0.8s infinite; }
+        .state-hold { background: rgba(230, 126, 34, 0.3); color: var(--hold); border-color: var(--hold); }
+        .state-go { background: var(--safe); color: #000; border-color: #fff; box-shadow: 0 0 30px rgba(46, 204, 113, 0.6); }
+
         .car-info { background: var(--card); padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #222; text-align: center; }
         .ledger { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 5px; }
         td { padding: 12px 5px; border-bottom: 1px solid #111; }
-        @keyframes pulse { 50% { opacity: 0.6; } }
+        @keyframes pulse { 50% { opacity: 0.5; border-color: transparent; } }
     </style>
 </head>
 <body>
@@ -34,10 +42,10 @@
         <div class="clock" id="clock">00:00:00</div>
         
         <div class="car-info">
-            <input type="text" id="carNum" placeholder="CAR #" style="background:transparent; border:none; color:var(--accent); text-align:center; font-size:1.2rem; width:100%; outline:none;">
+            <input type="text" id="carNum" placeholder="ENTER CAR #" style="background:transparent; border:none; color:var(--accent); text-align:center; font-size:1.2rem; width:100%; outline:none;">
         </div>
 
-        <div id="status-pill" class="status-pill">STANDBY</div>
+        <div id="status-pill" class="status-pill state-searching">SEARCHING...</div>
 
         <table class="ledger">
             <tbody id="ledger-body"></tbody>
@@ -71,39 +79,27 @@
 <script>
     let map, carMarker, points = [], holdTimer = null, currentSpeed = 0;
 
-    // Initialize Map - Default view (will be updated by route)
     map = L.map('map', {zoomControl:false}).setView([52.18, -4.1], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     carMarker = L.circleMarker([0,0], {color: 'red', radius: 6, fillOpacity: 1}).addTo(map);
 
     async function loadRoute() {
-        // Fetch from same directory
         const routeUrl = './route.json?t=' + Date.now();
         try {
             const resp = await fetch(routeUrl);
-            if (!resp.ok) throw new Error('File Not Found');
             const data = await resp.json();
-            
             document.getElementById('event-name').textContent = data.event_name;
             points = []; 
-
             data.controls.forEach(c => {
                 const [lat, lon] = c.coords.split(',').map(n => parseFloat(n.trim()));
                 points.push({ name: c.id, lat, lon, desc: c.description || "", time: null, inZone: false });
                 L.circle([lat, lon], {radius: 50, color: '#444', weight: 1, fillOpacity: 0.1}).addTo(map);
             });
-
-            // WAKE UP THE MAP: Center on the first control
-            if(points.length > 0) {
-                map.setView([points[0].lat, points[0].lon], 15);
-            }
-
+            if(points.length > 0) map.setView([points[0].lat, points[0].lon], 15);
             refreshLedger();
-            console.log("Route Loaded Successfully");
         } catch (e) { 
-            console.error("Fetch failed:", e);
             document.getElementById('event-name').textContent = "RETRYING SYNC..."; 
-            setTimeout(loadRoute, 4000); 
+            setTimeout(loadRoute, 5000); 
         }
     }
 
@@ -111,7 +107,6 @@
         const cur = L.latLng(pos.coords.latitude, pos.coords.longitude);
         currentSpeed = pos.coords.speed ? (pos.coords.speed * 2.23694) : 0;
         carMarker.setLatLng(cur);
-        // Only pan to car if we aren't in a 'black screen' state
         if (points.length > 0) map.panTo(cur);
     }, null, {enableHighAccuracy: true});
 
@@ -135,18 +130,18 @@
                         p.inZone = true;
                         startHold(p);
                     } else {
-                        statusUpdate("SLOW DOWN TO ENGAGE", "state-wait");
+                        statusUpdate("SLOW DOWN!", "state-at-point");
                     }
                 }
             } else if (p.inZone && !p.time) {
                 p.inZone = false;
                 clearInterval(holdTimer);
                 holdTimer = null;
-                statusUpdate("STANDBY", "");
+                statusUpdate("SEARCHING...", "state-searching");
             }
         });
 
-        if (!activePointInRange && !holdTimer) statusUpdate("STANDBY", "");
+        if (!activePointInRange && !holdTimer) statusUpdate("SEARCHING...", "state-searching");
     }
 
     function startHold(p) {
@@ -155,15 +150,22 @@
         statusUpdate(`HOLDING: ${count}s`, "state-hold");
         holdTimer = setInterval(() => {
             count--;
-            if (count > 0) statusUpdate(`HOLDING: ${count}s`, "state-hold");
-            else {
+            if (count > 0) {
+                statusUpdate(`HOLDING: ${count}s`, "state-hold");
+            } else {
                 clearInterval(holdTimer);
                 holdTimer = null;
                 const timeNow = new Date().toTimeString().split(' ')[0];
                 p.time = timeNow;
-                statusUpdate("SECURED - GO!", "state-go");
+                statusUpdate("GO! GO! GO!", "state-go");
+                if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
                 window.pushToCloud(document.getElementById('carNum').value, p.name, timeNow);
                 refreshLedger();
+                
+                // Switch back to search mode after 8 seconds
+                setTimeout(() => {
+                    if(!holdTimer) statusUpdate("SEARCHING...", "state-searching");
+                }, 8000);
             }
         }, 1000);
     }
@@ -180,7 +182,7 @@
         document.getElementById('ledger-body').innerHTML = points.map(p => `
             <tr style="color:${p.time ? '#2ecc71' : '#555'}">
                 <td style="font-weight:bold;">${p.name}</td>
-                <td>${p.time || p.desc}</td>
+                <td>${p.time || p.desc || 'PENDING'}</td>
             </tr>
         `).join('');
     }
