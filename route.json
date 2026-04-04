@@ -1,36 +1,35 @@
 {
-  "event_name": "RALI PENNANT",
+  "event_name": "Rallye- Historique ",
   "controls": [
     {
       "id": "TC 1",
       "type": "TIME",
-      "coords": "53.299679,-4.237405",
-      "target_mins": 15
+      "coords": "52.016528,-3.906820",
+      "target_mins": 1
+    },
+    {
+      "id": "TC 2",
+      "type": "TIME",
+      "coords": "51.993505,-3.890715",
+      "target_mins": 4
     },
     {
       "id": "PC 1",
       "type": "PASSAGE",
-      "coords": "53.293375,-4.254510",
-      "target_mins": 15
+      "coords": "51.973585,-3.876985",
+      "target_mins": 3
     },
     {
-      "id": "PC 2",
-      "type": "PASSAGE",
-      "coords": "53.280472,-4.279259",
-      "target_mins": 15
-    },
-  
-    {
-      "id": "TC 2",
+      "id": "TC 3",
       "type": "TIME",
-      "coords": "53.273149,-4.267257",
-      "target_mins": 15
+      "coords": "51.968407,-3.871213",
+      "target_mins": 1
     },
     {
-      "id": "PC 3 ",
-      "type": "PASSAGE",
-      "coords": "53.282267,-4.221538",
-      "target_mins": 15
+      "id": "TC 4",
+      "type": "TIME",
+      "coords": "51.994860,-3.788667",
+      "target_mins": 9
     }
   ]
 }
