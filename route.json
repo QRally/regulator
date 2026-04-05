@@ -1,35 +1,59 @@
 {
-  "event_name": "Rallye- Historique ",
+  "event_name": "Beacon Run",
   "controls": [
     {
       "id": "TC 1",
       "type": "TIME",
-      "coords": "52.016528,-3.906820",
+      "coords": "51.998863,-3.766978",
       "target_mins": 1
     },
     {
       "id": "TC 2",
       "type": "TIME",
-      "coords": "51.993505,-3.890715",
-      "target_mins": 4
+      "coords": "51.989107,-3.726333",
+      "target_mins": 5
     },
     {
       "id": "PC 1",
       "type": "PASSAGE",
-      "coords": "51.973585,-3.876985",
-      "target_mins": 3
+      "coords": "51.980982,-3.698592",
+      "target_mins": 8
+    },
+    {
+      "id": "PC 2",
+      "type": "PASSAGE",
+      "coords": "51.976897,-3.682500",
+      "target_mins": 9
     },
     {
       "id": "TC 3",
       "type": "TIME",
-      "coords": "51.968407,-3.871213",
-      "target_mins": 1
+      "coords": "51.957505,-3.650418",
+      "target_mins": 13
+    },
+    {
+      "id": "PC 3",
+      "type": "PASSAGE",
+      "coords": "51.957387,-3.647612",
+      "target_mins": 13
+    },
+    {
+      "id": "PC 4",
+      "type": "PASSAGE",
+      "coords": "51.952147,-3.608658",
+      "target_mins": 17
     },
     {
       "id": "TC 4",
       "type": "TIME",
-      "coords": "51.994860,-3.788667",
-      "target_mins": 9
+      "coords": "51.944655,-3.566987",
+      "target_mins": 23
+    },
+    {
+      "id": "TC 5",
+      "type": "TIME",
+      "coords": "51.921230,-3.540953",
+      "target_mins": 27
     }
   ]
 }
