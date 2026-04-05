@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>THE REGULATOR v3.2 | MARSHAL</title>
+    <title>THE REGULATOR v3.3 | SMART COCKPIT</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --bg: #050505; --card: #111; --accent: #f1c40f; --safe: #2ecc71; --hold: #e67e22; }
         body { font-family: monospace; background: var(--bg); color: #eee; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         .header { background: #1a1a1a; padding: 10px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; font-size: 11px; }
         #map { flex: 2; background: #000; filter: grayscale(1) invert(0.9); }
-        .dash { padding: 15px; flex: 1.5; overflow-y: auto; display: flex; flex-direction: column; }
-        .clock { font-size: 3.2rem; text-align: center; font-weight: bold; margin-bottom: 5px; }
+        .dash { padding: 15px; flex: 2; overflow-y: auto; display: flex; flex-direction: column; }
+        .clock { font-size: 3rem; text-align: center; font-weight: bold; margin-bottom: 5px; color: #fff; }
         
-        /* TACTICAL STATUS BAR */
         .status-pill { 
-            padding: 25px; border-radius: 8px; text-align: center; font-weight: 900; font-size: 1.8rem; 
+            padding: 20px; border-radius: 8px; text-align: center; font-weight: 900; font-size: 1.6rem; 
             border: 3px solid #333; text-transform: uppercase; margin-bottom: 15px; transition: all 0.2s ease;
         }
         .state-searching { background: #111; color: #444; border-color: #222; }
@@ -23,16 +22,17 @@
         .state-hold { background: rgba(230, 126, 34, 0.3); color: var(--hold); border-color: var(--hold); }
         .state-go { background: var(--safe); color: #000; border-color: #fff; box-shadow: 0 0 30px rgba(46, 204, 113, 0.6); }
 
-        .car-info { background: var(--card); padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #222; text-align: center; }
-        .ledger { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 5px; }
-        td { padding: 12px 5px; border-bottom: 1px solid #111; }
+        .car-info { background: var(--card); padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #222; }
+        .ledger { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 5px; }
+        .ledger td { padding: 10px 5px; border-bottom: 1px solid #1a1a1a; }
+        .due-label { font-size: 10px; color: #666; display: block; }
         @keyframes pulse { 50% { opacity: 0.5; border-color: transparent; } }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <span id="event-name" style="color:var(--accent); font-weight:bold;">SYNCING ROUTE...</span>
+        <span id="event-name" style="color:var(--accent); font-weight:bold;">SYNCING...</span>
         <span id="cloud-stat" style="color:var(--safe)">CLOUD READY</span>
     </div>
 
@@ -42,7 +42,7 @@
         <div class="clock" id="clock">00:00:00</div>
         
         <div class="car-info">
-            <input type="text" id="carNum" placeholder="ENTER CAR #" style="background:transparent; border:none; color:var(--accent); text-align:center; font-size:1.2rem; width:100%; outline:none;">
+            <input type="number" id="carNum" placeholder="CAR #" value="1" style="background:transparent; border:none; color:var(--accent); text-align:center; font-size:1.4rem; width:100%; outline:none; font-weight:bold;">
         </div>
 
         <div id="status-pill" class="status-pill state-searching">SEARCHING...</div>
@@ -70,14 +70,17 @@
     const db = getDatabase(app);
 
     window.pushToCloud = function(car, point, time) {
-        if(!car) car = "Unknown";
-        update(ref(db, 'Rally_Test/Car_' + car), { [point]: time });
+        update(ref(db, 'Rally_Test/Car_' + (car || "Unknown")), { [point]: time });
     };
 </script>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     let map, carMarker, points = [], holdTimer = null, currentSpeed = 0;
+
+    // CONFIG - MUST MATCH RESULTS HQ
+    const MASTER_START = "14:00:00"; 
+    const INTERVAL = 1; 
 
     map = L.map('map', {zoomControl:false}).setView([52.18, -4.1], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -89,19 +92,30 @@
             const resp = await fetch(routeUrl);
             const data = await resp.json();
             document.getElementById('event-name').textContent = data.event_name;
-            points = []; 
-            data.controls.forEach(c => {
+            
+            const carNum = parseInt(document.getElementById('carNum').value) || 0;
+            points = data.controls.map(c => {
                 const [lat, lon] = c.coords.split(',').map(n => parseFloat(n.trim()));
-                points.push({ name: c.id, lat, lon, desc: c.description || "", time: null, inZone: false });
                 L.circle([lat, lon], {radius: 50, color: '#444', weight: 1, fillOpacity: 0.1}).addTo(map);
+                
+                return {
+                    name: c.id, lat, lon, type: c.type,
+                    due: calculateDueTime(carNum, c.target_mins),
+                    time: null, inZone: false
+                };
             });
-            if(points.length > 0) map.setView([points[0].lat, points[0].lon], 15);
             refreshLedger();
-        } catch (e) { 
-            document.getElementById('event-name').textContent = "RETRYING SYNC..."; 
-            setTimeout(loadRoute, 5000); 
-        }
+        } catch (e) { setTimeout(loadRoute, 5000); }
     }
+
+    function calculateDueTime(carNum, targetMins) {
+        if (!targetMins) return "---";
+        const [h, m, s] = MASTER_START.split(':').map(Number);
+        const due = new Date(2026, 3, 1, h, m + (carNum * INTERVAL) + targetMins, s);
+        return due.toTimeString().split(' ')[0];
+    }
+
+    document.getElementById('carNum').addEventListener('input', loadRoute);
 
     navigator.geolocation.watchPosition(pos => {
         const cur = L.latLng(pos.coords.latitude, pos.coords.longitude);
@@ -117,72 +131,55 @@
 
     function checkLogic() {
         const carPos = carMarker.getLatLng();
-        let activePointInRange = false;
+        let activeInRange = false;
 
         points.forEach(p => {
             if (p.time) return;
             const dist = map.distance(carPos, [p.lat, p.lon]);
-            
             if (dist < 50) {
-                activePointInRange = true;
+                activeInRange = true;
                 if (!p.inZone) {
-                    if (currentSpeed < 5) {
-                        p.inZone = true;
-                        startHold(p);
-                    } else {
-                        statusUpdate("SLOW DOWN!", "state-at-point");
-                    }
+                    if (currentSpeed < 5) { p.inZone = true; startHold(p); }
+                    else { statusUpdate("SLOW DOWN!", "state-at-point"); }
                 }
             } else if (p.inZone && !p.time) {
-                p.inZone = false;
-                clearInterval(holdTimer);
-                holdTimer = null;
+                p.inZone = false; clearInterval(holdTimer); holdTimer = null;
                 statusUpdate("SEARCHING...", "state-searching");
             }
         });
-
-        if (!activePointInRange && !holdTimer) statusUpdate("SEARCHING...", "state-searching");
+        if (!activeInRange && !holdTimer) statusUpdate("SEARCHING...", "state-searching");
     }
 
     function startHold(p) {
-        if (holdTimer) clearInterval(holdTimer);
         let count = 10;
         statusUpdate(`HOLDING: ${count}s`, "state-hold");
         holdTimer = setInterval(() => {
             count--;
-            if (count > 0) {
-                statusUpdate(`HOLDING: ${count}s`, "state-hold");
-            } else {
-                clearInterval(holdTimer);
-                holdTimer = null;
+            if (count > 0) statusUpdate(`HOLDING: ${count}s`, "state-hold");
+            else {
+                clearInterval(holdTimer); holdTimer = null;
                 const timeNow = new Date().toTimeString().split(' ')[0];
                 p.time = timeNow;
                 statusUpdate("GO! GO! GO!", "state-go");
                 if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
                 window.pushToCloud(document.getElementById('carNum').value, p.name, timeNow);
                 refreshLedger();
-                
-                // Switch back to search mode after 8 seconds
-                setTimeout(() => {
-                    if(!holdTimer) statusUpdate("SEARCHING...", "state-searching");
-                }, 8000);
+                setTimeout(() => { if(!holdTimer) statusUpdate("SEARCHING...", "state-searching"); }, 8000);
             }
         }, 1000);
     }
 
     function statusUpdate(txt, cls) {
         const s = document.getElementById('status-pill');
-        if(s.textContent !== txt) {
-            s.textContent = txt; 
-            s.className = `status-pill ${cls}`;
-        }
+        if(s.textContent !== txt) { s.textContent = txt; s.className = `status-pill ${cls}`; }
     }
 
     function refreshLedger() {
         document.getElementById('ledger-body').innerHTML = points.map(p => `
-            <tr style="color:${p.time ? '#2ecc71' : '#555'}">
-                <td style="font-weight:bold;">${p.name}</td>
-                <td>${p.time || p.desc || 'PENDING'}</td>
+            <tr style="color:${p.time ? 'var(--safe)' : '#eee'}">
+                <td><span class="due-label">CONTROL</span>${p.name}</td>
+                <td><span class="due-label">DUE</span>${p.due}</td>
+                <td style="text-align:right;"><span class="due-label">ACTUAL</span>${p.time || '---'}</td>
             </tr>
         `).join('');
     }
