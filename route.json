@@ -8,7 +8,7 @@
       "target_mins": 1
     },
     {
-      "id": "TC 2",
+      "id": "TC 1",
       "type": "TIME",
       "coords": "51.989107,-3.726333",
       "target_mins": 5
@@ -26,7 +26,7 @@
       "target_mins": 9
     },
     {
-      "id": "TC 3",
+      "id": "TC 2",
       "type": "TIME",
       "coords": "51.957505,-3.650418",
       "target_mins": 13
@@ -44,7 +44,7 @@
       "target_mins": 17
     },
     {
-      "id": "TC 4",
+      "id": "TC 3",
       "type": "TIME",
       "coords": "51.944655,-3.566987",
       "target_mins": 23
