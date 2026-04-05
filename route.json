@@ -2,7 +2,7 @@
   "event_name": "Beacon Run",
   "controls": [
     {
-      "id": "TC 1",
+      "id": "MC 1",
       "type": "TIME",
       "coords": "51.998863,-3.766978",
       "target_mins": 1
@@ -50,7 +50,7 @@
       "target_mins": 23
     },
     {
-      "id": "TC 5",
+      "id": "MC 2",
       "type": "TIME",
       "coords": "51.921230,-3.540953",
       "target_mins": 27
