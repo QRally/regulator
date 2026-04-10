@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GEOSTAMPED v5.0</title>
+    <title>GEOSTAMPED v5.1 - Master</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
     <style>
         :root { --bg: #050505; --card: #111; --accent: #f1c40f; --safe: #2ecc71; --hold: #e67e22; --danger: #e74c3c; }
         body { font-family: monospace; background: var(--bg); color: #eee; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -16,9 +18,7 @@
         #map { flex: 1.5; background: #222; filter: grayscale(1) invert(0.9); }
         .dash { padding: 15px; flex: 2.5; overflow-y: auto; display: flex; flex-direction: column; }
         
-        /* Control Board Labels */
         .leaflet-tooltip { background: rgba(0,0,0,0.8); color: #fff; border: 1px solid var(--accent); font-weight: bold; font-family: monospace; }
-
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
         .stat-box { background: var(--card); padding: 10px; border: 1px solid #222; border-radius: 4px; text-align: center; }
         .stat-label { font-size: 9px; color: #666; text-transform: uppercase; }
@@ -65,6 +65,8 @@
 
     <audio id="sndFound" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3" preload="auto"></audio>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -83,12 +85,12 @@
     const db = getDatabase(app);
 
     const INTERNAL_ROUTE = {
-        "event_name": "PWLLELLI TEST v5.0",
+        "event_name": "LLANDOVERY TEST v5.1",
         "controls": [
-            { "id": "START (Tremeryri)", "coords": "53.300374,-4.227855", "type": "START" },
-            { "id": "PC 1", "coords": "53.300723,-4.225380", "type": "PC" },
-            { "id": "Scatter 1", "coords": "53.300854,-4.223017", "type": "SCATTER" },
-            { "id": "FINISH", "coords": "53.300027,-4.221019", "type": "FINISH" }
+            { "id": "START (Castle)", "coords": "51.9942, -3.7963", "type": "START" },
+            { "id": "PC 1", "coords": "51.9965, -3.7915", "type": "PC" },
+            { "id": "Scatter 1", "coords": "51.9980, -3.7850", "type": "SCATTER" },
+            { "id": "FINISH", "coords": "52.0010, -3.7750", "type": "FINISH" }
         ]
     };
 
@@ -97,7 +99,12 @@
     let startTime = localStorage.getItem('h_start_time') ? parseInt(localStorage.getItem('h_start_time')) : null;
     let foundStamps = JSON.parse(localStorage.getItem('h_stamps') || "{}");
     
-    let lastPos = null, map, carMarker, points = [], holdTimer = null;
+    let lastPos = null, map, carMarker, points = [], holdTimer = null, currentTimerPoint = null, wakeLock = null;
+
+    // Wake Lock to prevent phone sleeping
+    async function requestWakeLock() {
+        try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); } } catch (e) {}
+    }
 
     window.unlockSensors = function() {
         if (carNum === "0") { carNum = prompt("Enter Car #:", "1") || "1"; localStorage.setItem('h_car', carNum); }
@@ -105,6 +112,7 @@
         document.getElementById('init-barrier').style.display = 'none';
         document.getElementById('odo-val').textContent = (totalMeters * 0.000621371).toFixed(2) + " mi";
         document.getElementById('sndFound').play().catch(()=>{}); 
+        requestWakeLock();
         initTracking();
     };
 
@@ -112,18 +120,13 @@
         document.getElementById('event-label').textContent = INTERNAL_ROUTE.event_name;
         points = INTERNAL_ROUTE.controls.map(c => {
             const [lat, lon] = c.coords.split(',').map(n => parseFloat(n.trim()));
-            
-            // Map Circle (Control Board)
             const circle = L.circle([lat, lon], { 
-                radius: 40, // Reduced Radius
+                radius: 40, 
                 color: foundStamps[c.id] ? 'var(--safe)' : (c.type==='PC'?'var(--hold)':'var(--accent)'), 
                 weight: 2, 
                 fillOpacity: 0.2 
             }).addTo(map);
-
-            // Add Control Label to Map
             circle.bindTooltip(c.id, {permanent: true, direction: 'top', offset: [0, -10]}).openTooltip();
-            
             return { id: c.id, lat, lon, type: c.type || 'SCATTER', time: foundStamps[c.id] || null, inZone: false, circle: circle };
         });
         refreshLedger();
@@ -138,7 +141,7 @@
             document.getElementById('gps-acc').textContent = `ACC: ${accuracy.toFixed(1)}m`;
 
             if (!map) {
-                map = L.map('map', {zoomControl:false}).setView(cur, 15);
+                map = L.map('map', {zoomControl:false}).setView(cur, 17);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
                 carMarker = L.circleMarker(cur, {color: '#007bff', radius: 8, fillOpacity: 1, weight:3}).addTo(map);
                 loadRoute();
@@ -160,25 +163,42 @@
             points.forEach(p => {
                 if (p.time) return;
                 const dist = map.distance(cur, [p.lat, p.lon]);
-                if (dist < 40) { // New 40m Geofence
+                if (dist < 40) { 
                     if (p.type === 'PC') {
-                        if (currentSpeedMph < 4) { if(!p.inZone) { p.inZone = true; startHold(p); } }
-                        else { statusUpdate("SLOW DOWN!", "state-at-point"); if(holdTimer){ clearInterval(holdTimer); holdTimer=null; p.inZone=false; } }
+                        if (currentSpeedMph < 4) { 
+                            if(!p.inZone) { p.inZone = true; startHold(p); } 
+                        } else { 
+                            if(p.inZone) { cancelHold(p, "SLOW DOWN!"); }
+                            else { statusUpdate("SLOW DOWN!", "state-at-point"); }
+                        }
                     } else { stampPoint(p); }
-                } else { p.inZone = false; }
+                } else { 
+                    if(p.inZone) cancelHold(p, "SEARCHING...");
+                }
             });
-        }, (err) => { statusUpdate("GPS ERR", "state-danger"); }, { enableHighAccuracy: true });
+        }, (err) => { statusUpdate("GPS ERR", "state-danger"); }, 
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
     }
 
     function startHold(p) {
         if(holdTimer) return;
         let count = 5;
+        currentTimerPoint = p.id;
         statusUpdate(`HOLDING: ${count}s`, "state-hold");
         holdTimer = setInterval(() => {
             count--;
             if (count > 0) statusUpdate(`HOLDING: ${count}s`, "state-hold");
             else { clearInterval(holdTimer); holdTimer = null; stampPoint(p); }
         }, 1000);
+    }
+
+    function cancelHold(p, msg) {
+        if(holdTimer && currentTimerPoint === p.id) {
+            clearInterval(holdTimer);
+            holdTimer = null;
+        }
+        p.inZone = false;
+        statusUpdate(msg, "state-searching");
     }
 
     function stampPoint(p) {
@@ -188,24 +208,24 @@
         foundStamps[p.id] = timeNow;
         localStorage.setItem('h_stamps', JSON.stringify(foundStamps));
 
-        // Visual Map Update
         p.circle.setStyle({color: 'var(--safe)', fillOpacity: 0.5});
-
         document.getElementById('flash-screen').style.opacity = "0.8";
         setTimeout(() => document.getElementById('flash-screen').style.opacity = "0", 300);
         document.getElementById('sndFound').play().catch(()=>{});
         
         statusUpdate("STAMPED!", "state-go");
+        
         update(ref(db, `GEOSCATTER/Car_${carNum}/${p.id}`), {
             time: timeNow, miles: (totalMeters * 0.000621371).toFixed(2), timestamp: Date.now()
-        });
+        }).then(() => console.log("Cloud Updated")).catch(e => console.log("Offline Storage Engaged"));
+
         refreshLedger();
         setTimeout(() => { if(!holdTimer) statusUpdate("SEARCHING...", "state-searching"); }, 4000);
     }
 
     function statusUpdate(txt, cls) {
         const s = document.getElementById('status-pill');
-        s.textContent = txt; s.className = `status-pill ${cls}`;
+        if(s) { s.textContent = txt; s.className = `status-pill ${cls}`; }
     }
 
     function refreshLedger() {
@@ -227,6 +247,5 @@
         }
     }, 1000);
 </script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </body>
 </html>
