@@ -1,59 +1,25 @@
 {
-  "event_name": "Beacon Run",
+  "event_name": "GEOSCATTER HYBRID",
   "controls": [
     {
-      "id": "MC 1",
-      "type": "TIME",
-      "coords": "51.998863,-3.766978",
-      "target_mins": 1
-    },
-    {
-      "id": "TC 1",
-      "type": "TIME",
-      "coords": "51.989107,-3.726333",
-      "target_mins": 5
+      "id": "START",
+      "coords": "53.24027, -4.35012",
+      "type": "START"
     },
     {
       "id": "PC 1",
-      "type": "PASSAGE",
-      "coords": "51.980982,-3.698592",
-      "target_mins": 8
+      "coords": "53.22726, -4.35090",
+      "type": "PC"
     },
     {
-      "id": "PC 2",
-      "type": "PASSAGE",
-      "coords": "51.976897,-3.682500",
-      "target_mins": 9
+      "id": "Scatter 1",
+      "coords": "53.23723, -4.32538",
+      "type": "SCATTER"
     },
     {
-      "id": "TC 2",
-      "type": "TIME",
-      "coords": "51.957505,-3.650418",
-      "target_mins": 13
-    },
-    {
-      "id": "PC 3",
-      "type": "PASSAGE",
-      "coords": "51.957387,-3.647612",
-      "target_mins": 13
-    },
-    {
-      "id": "PC 4",
-      "type": "PASSAGE",
-      "coords": "51.952147,-3.608658",
-      "target_mins": 17
-    },
-    {
-      "id": "TC 3",
-      "type": "TIME",
-      "coords": "51.944655,-3.566987",
-      "target_mins": 23
-    },
-    {
-      "id": "TC 4",
-      "type": "TIME",
-      "coords": "51.921230,-3.540953",
-      "target_mins": 27
+      "id": "FINISH",
+      "coords": "53.23248, -4.18202",
+      "type": "FINISH"
     }
   ]
 }
