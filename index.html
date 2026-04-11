@@ -14,24 +14,26 @@
         #init-barrier { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:10000; display:flex; align-items:center; justify-content:center; }
         .btn-start { background: var(--accent); color:#000; border:none; padding: 20px 40px; font-size:1.2rem; font-weight:bold; border-radius:8px; cursor:pointer; }
 
-        .header { background: #1a1a1a; padding: 10px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; font-size: 11px; }
-        #map { flex: 1.5; background: #222; filter: grayscale(1) invert(0.9); }
-        .dash { padding: 15px; flex: 2.5; overflow-y: auto; display: flex; flex-direction: column; }
+        .header { background: #1a1a1a; padding: 10px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; font-size: 11px; flex-shrink: 0; }
+        #map { flex: 1; min-height: 30vh; background: #222; filter: grayscale(1) invert(0.9); }
+        
+        /* Dashboard Container - Fixed height logic */
+        .dash { padding: 15px; flex: 2; overflow-y: auto; display: flex; flex-direction: column; }
         
         .leaflet-tooltip { background: rgba(0,0,0,0.8); color: #fff; border: 1px solid var(--accent); font-weight: bold; font-family: monospace; }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; flex-shrink: 0; }
         .stat-box { background: var(--card); padding: 10px; border: 1px solid #222; border-radius: 4px; text-align: center; }
         .stat-label { font-size: 9px; color: #666; text-transform: uppercase; }
         .stat-val { font-size: 1.2rem; font-weight: bold; color: var(--accent); display: block; }
 
-        .clock { font-size: 3.2rem; text-align: center; font-weight: bold; margin: 5px 0; color: #fff; line-height: 1; }
-        .status-pill { padding: 15px; border-radius: 8px; text-align: center; font-weight: 900; font-size: 1.4rem; border: 3px solid #333; text-transform: uppercase; margin-bottom: 15px; transition: 0.2s; }
+        .clock { font-size: 3.2rem; text-align: center; font-weight: bold; margin: 5px 0; color: #fff; line-height: 1; flex-shrink: 0; }
+        .status-pill { padding: 15px; border-radius: 8px; text-align: center; font-weight: 900; font-size: 1.4rem; border: 3px solid #333; text-transform: uppercase; margin-bottom: 15px; transition: 0.2s; flex-shrink: 0; }
         .state-searching { background: #111; color: #444; border-color: #222; }
         .state-at-point { background: rgba(241, 196, 15, 0.2); color: var(--accent); border-color: var(--accent); }
         .state-hold { background: rgba(230, 126, 34, 0.3); color: var(--hold); border-color: var(--hold); animation: blink 0.5s infinite; }
         .state-go { background: var(--safe); color: #000; border-color: #fff; }
 
-        .ledger { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .ledger { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
         .ledger td { padding: 8px 5px; border-bottom: 1px solid #1a1a1a; }
         
         #flash-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--safe); opacity:0; pointer-events:none; z-index:9999; transition:0.2s; }
