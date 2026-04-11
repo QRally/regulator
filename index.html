@@ -87,10 +87,17 @@
     const INTERNAL_ROUTE = {
         "event_name": "GEOSTAMP v5.1",
         "controls": [
-            { "id": "START (Home)", "coords": "53.300352,-4.227841", "type": "START" },
-            { "id": "PC 1", "coords": "53.300854,-4.223610", "type": "PC" },
-            { "id": "Scatter 1", "coords": "53.300435,-4.221954", "type": "SCATTER" },
-            { "id": "FINISH", "coords": "53.300017,-4.221071", "type": "FINISH" }
+            { "id": "START", "coords": "52.896518, -4.404677", "type": "START" },
+            { "id": "Scatter 1", "coords": "52.911908, -4.387015", "type": "SCATTER" },
+            { "id": "PC 2", "coords": "52.921162, -4.398005", "type": "PC" },
+            { "id": "Scatter 3", "coords": "52.939766, -4.408161", "type": "SCATTER" },
+            { "id": "Scatter 4", "coords": "52.924374, -4.416869", "type": "SCATTER" },
+            { "id": "Scatter 5", "coords": "52.921046, -4.444096", "type": "SCATTER" },
+            { "id": "Scatter 6", "coords": "52.911028, -4.449053", "type": "SCATTER" },
+            { "id": "Scatter 7", "coords": "52.902263, -4.458742", "type": "SCATTER" },
+            { "id": "Scatter 8", "coords": "52.892766, -4.470572", "type": "SCATTER" },
+            { "id": "Scatter 9", "coords": "52.897962, -4.433968", "type": "SCATTER" },
+            { "id": "FINISH", "coords": "52.885286, -4.434130", "type": "FINISH" }
         ]
     };
 
@@ -101,7 +108,6 @@
     
     let lastPos = null, map, carMarker, points = [], holdTimer = null, currentTimerPoint = null, wakeLock = null;
 
-    // Wake Lock to prevent phone sleeping
     async function requestWakeLock() {
         try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); } } catch (e) {}
     }
