@@ -9,16 +9,16 @@
     
     <style>
         :root { --bg: #050505; --card: #111; --accent: #f1c40f; --safe: #2ecc71; --hold: #e67e22; --danger: #e74c3c; }
-        body { font-family: monospace; background: var(--bg); color: #eee; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { font-family: monospace; background: var(--bg); color: #eee; margin: 0; display: flex; flex-direction: column; height: 100vh; height: -webkit-fill-available; overflow: hidden; }
         
         #init-barrier { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:10000; display:flex; align-items:center; justify-content:center; }
         .btn-start { background: var(--accent); color:#000; border:none; padding: 20px 40px; font-size:1.2rem; font-weight:bold; border-radius:8px; cursor:pointer; }
 
         .header { background: #1a1a1a; padding: 10px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; font-size: 11px; flex-shrink: 0; }
-        #map { flex: 1; min-height: 30vh; background: #222; filter: grayscale(1) invert(0.9); }
+        #map { height: 35vh; background: #222; filter: grayscale(1) invert(0.9); flex-shrink: 0; }
         
-        /* Dashboard Container - Fixed height logic */
-        .dash { padding: 15px; flex: 2; overflow-y: auto; display: flex; flex-direction: column; }
+        /* Dashboard Container */
+        .dash { padding: 15px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
         
         .leaflet-tooltip { background: rgba(0,0,0,0.8); color: #fff; border: 1px solid var(--accent); font-weight: bold; font-family: monospace; }
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; flex-shrink: 0; }
@@ -33,7 +33,7 @@
         .state-hold { background: rgba(230, 126, 34, 0.3); color: var(--hold); border-color: var(--hold); animation: blink 0.5s infinite; }
         .state-go { background: var(--safe); color: #000; border-color: #fff; }
 
-        .ledger { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
+        .ledger { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 60px; /* Added extra space for bottom scroll */ }
         .ledger td { padding: 8px 5px; border-bottom: 1px solid #1a1a1a; }
         
         #flash-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--safe); opacity:0; pointer-events:none; z-index:9999; transition:0.2s; }
