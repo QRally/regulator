@@ -3,39 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GEOSTAMPED v5.1 - Master</title>
+    <title>GEOSTAMPED v5.2 - Master</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
-        :root { --bg: #050505; --card: #111; --accent: #f1c40f; --safe: #2ecc71; --hold: #e67e22; --danger: #e74c3c; }
-        body { font-family: monospace; background: var(--bg); color: #eee; margin: 0; display: flex; flex-direction: column; height: 100vh; height: -webkit-fill-available; overflow: hidden; }
-        
-        #init-barrier { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:10000; display:flex; align-items:center; justify-content:center; }
-        .btn-start { background: var(--accent); color:#000; border:none; padding: 20px 40px; font-size:1.2rem; font-weight:bold; border-radius:8px; cursor:pointer; }
+        :root { 
+            --bg: #050505; 
+            --card: #111; 
+            --accent: #f1c40f; 
+            --safe: #2ecc71; 
+            --hold: #e67e22; 
+            --danger: #e74c3c; 
+        }
 
-        .header { background: #1a1a1a; padding: 10px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-between; font-size: 11px; flex-shrink: 0; }
-        #map { height: 35vh; background: #222; filter: grayscale(1) invert(0.9); flex-shrink: 0; }
+        /* Essential for full-screen mobile apps */
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; /* Prevents the whole page from bouncing */
+            background: var(--bg);
+            font-family: monospace;
+        }
+
+        body { 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        #init-barrier { 
+            position: fixed; top:0; left:0; width:100%; height:100%; 
+            background:rgba(0,0,0,0.95); z-index:10000; 
+            display:flex; align-items:center; justify-content:center; 
+        }
         
-        /* Dashboard Container */
-        .dash { padding: 15px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
+        .btn-start { 
+            background: var(--accent); color:#000; border:none; 
+            padding: 20px 40px; font-size:1.2rem; font-weight:bold; 
+            border-radius:8px; cursor:pointer; 
+        }
+
+        .header { 
+            background: #1a1a1a; padding: 10px; 
+            border-bottom: 2px solid var(--accent); 
+            display: flex; justify-content: space-between; 
+            font-size: 11px; flex-shrink: 0; 
+        }
+
+        #map { 
+            height: 30vh; /* Fixed height for the map */
+            background: #222; 
+            filter: grayscale(1) invert(0.9); 
+            flex-shrink: 0; 
+        }
         
-        .leaflet-tooltip { background: rgba(0,0,0,0.8); color: #fff; border: 1px solid var(--accent); font-weight: bold; font-family: monospace; }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; flex-shrink: 0; }
+        /* DASHBOARD - This is the scrollable section */
+        .dash { 
+            flex: 1; /* Fills remaining space */
+            overflow-y: auto; /* Enables scrolling */
+            padding: 15px;
+            display: flex; 
+            flex-direction: column; 
+            -webkit-overflow-scrolling: touch; /* Smooth scroll for iOS */
+        }
+        
+        .stats-grid { 
+            display: grid; grid-template-columns: 1fr 1fr; 
+            gap: 10px; margin-bottom: 10px; flex-shrink: 0; 
+        }
+        
         .stat-box { background: var(--card); padding: 10px; border: 1px solid #222; border-radius: 4px; text-align: center; }
         .stat-label { font-size: 9px; color: #666; text-transform: uppercase; }
         .stat-val { font-size: 1.2rem; font-weight: bold; color: var(--accent); display: block; }
 
-        .clock { font-size: 3.2rem; text-align: center; font-weight: bold; margin: 5px 0; color: #fff; line-height: 1; flex-shrink: 0; }
-        .status-pill { padding: 15px; border-radius: 8px; text-align: center; font-weight: 900; font-size: 1.4rem; border: 3px solid #333; text-transform: uppercase; margin-bottom: 15px; transition: 0.2s; flex-shrink: 0; }
+        .clock { font-size: 3.2rem; text-align: center; font-weight: bold; margin: 5px 0; color: #fff; flex-shrink: 0; }
+        
+        .status-pill { 
+            padding: 15px; border-radius: 8px; text-align: center; 
+            font-weight: 900; font-size: 1.4rem; border: 3px solid #333; 
+            text-transform: uppercase; margin-bottom: 15px; flex-shrink: 0;
+        }
+
+        /* LEDGER - Scrollable list of controls */
+        .ledger { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .ledger td { padding: 12px 5px; border-bottom: 1px solid #1a1a1a; }
+        
+        /* Spacing div at bottom so Finish isn't hidden by browser UI */
+        .scroll-spacer { height: 120px; flex-shrink: 0; }
+
         .state-searching { background: #111; color: #444; border-color: #222; }
         .state-at-point { background: rgba(241, 196, 15, 0.2); color: var(--accent); border-color: var(--accent); }
         .state-hold { background: rgba(230, 126, 34, 0.3); color: var(--hold); border-color: var(--hold); animation: blink 0.5s infinite; }
         .state-go { background: var(--safe); color: #000; border-color: #fff; }
 
-        .ledger { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 60px; /* Added extra space for bottom scroll */ }
-        .ledger td { padding: 8px 5px; border-bottom: 1px solid #1a1a1a; }
-        
         #flash-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--safe); opacity:0; pointer-events:none; z-index:9999; transition:0.2s; }
         @keyframes blink { 50% { opacity: 0.3; } }
     </style>
@@ -60,9 +121,16 @@
             <div class="stat-box"><span class="stat-label">Odometer</span><span id="odo-val" class="stat-val">0.00 mi</span></div>
             <div class="stat-box"><span class="stat-label">Car #</span><span id="car-display" class="stat-val" style="color:#fff">--</span></div>
         </div>
+        
         <div class="clock" id="clock">00:00:00</div>
         <div id="status-pill" class="status-pill state-searching">AWAITING GPS</div>
-        <table class="ledger"><tbody id="ledger-body"></tbody></table>
+        
+        <table class="ledger">
+            <tbody id="ledger-body">
+                </tbody>
+        </table>
+
+        <div class="scroll-spacer"></div>
     </div>
 
     <audio id="sndFound" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3" preload="auto"></audio>
@@ -73,6 +141,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+    // Firebase configuration remains same
     const firebaseConfig = {
         apiKey: "AIzaSyCLi3NMmoJJCeJFGU4d-N4R47D0qM1r8nU",
         authDomain: "the-regulator-rally.firebaseapp.com",
@@ -86,8 +155,9 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    // To add more controls in the future, simply add objects to this array.
     const INTERNAL_ROUTE = {
-        "event_name": "GEOSTAMP v5.1",
+        "event_name": "GEOSTAMP v5.2",
         "controls": [
             { "id": "START", "coords": "52.896518, -4.404677", "type": "START" },
             { "id": "Scatter 1", "coords": "52.911908, -4.387015", "type": "SCATTER" },
