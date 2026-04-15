@@ -3,94 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GEOSTAMPED v5.3 - Master</title>
+    <title>GEOSTAMP LIVE - Master</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     
     <style>
         :root { 
-            --bg: #050505; 
-            --card: #111; 
-            --accent: #f1c40f; 
+            --bg: #000000; 
+            --card: #0a0a0a; 
+            --accent: #fbc500; 
             --safe: #2ecc71; 
             --hold: #e67e22; 
-            --danger: #e74c3c; 
+            --danger: #e74c3c;
         }
 
-        /* Layout Lock */
         html, body { 
             height: 100%; margin: 0; padding: 0; 
             overflow: hidden; background: var(--bg);
-            font-family: monospace; color: #eee;
+            font-family: 'Inter', sans-serif; color: #eee;
         }
 
         body { display: flex; flex-direction: column; }
 
-        /* Setup Barrier Styles */
         #init-barrier { 
             position: fixed; top:0; left:0; width:100%; height:100%; 
-            background:rgba(0,0,0,0.95); z-index:10000; 
+            background:#000; z-index:10000; 
             display:flex; align-items:center; justify-content:center; 
         }
         
-        .setup-card {
-            background: var(--card); padding: 30px;
-            border: 2px solid var(--accent); border-radius: 12px;
-            text-align: center; width: 80%; max-width: 300px;
-        }
+        .setup-card { text-align: center; width: 90%; max-width: 380px; }
+        .brand-logo { font-size: 4.2rem; font-weight: 900; color: var(--accent); margin: 0; letter-spacing: -3px; line-height: 0.9; }
+        .brand-sub { font-size: 1.1rem; color: #444; letter-spacing: 6px; text-transform: uppercase; margin-bottom: 50px; display: block; font-weight: 400; }
+        .entry-label { color: #666; font-size: 0.9rem; font-weight: 700; letter-spacing: 2px; margin-bottom: 15px; text-transform: uppercase; }
 
         .entry-input {
-            width: 100%; background: #000; border: 1px solid #444;
+            width: 100%; background: #111111; border: 2px solid #222;
             color: var(--accent); font-size: 2.5rem; text-align: center;
-            margin: 20px 0; padding: 10px 0; font-family: monospace;
-            border-radius: 8px;
+            margin-bottom: 35px; padding: 25px 0; font-family: 'Inter', sans-serif;
+            border-radius: 25px; outline: none;
         }
 
-        .btn-start { 
+        .btn-unlock { 
             background: var(--accent); color:#000; border:none; 
-            padding: 20px; font-size: 1.2rem; font-weight:bold; 
-            border-radius:8px; cursor:pointer; width: 100%;
+            padding: 24px; font-size: 1.5rem; font-weight: 700; 
+            border-radius: 25px; cursor:pointer; width: 100%;
+            text-transform: uppercase;
         }
 
-        /* UI Components */
         .header { 
-            background: #1a1a1a; padding: 10px; 
+            background: #111; padding: 12px; 
             border-bottom: 2px solid var(--accent); 
             display: flex; justify-content: space-between; 
-            font-size: 11px; flex-shrink: 0; 
+            font-size: 11px; flex-shrink: 0; font-family: monospace;
         }
 
         #map { height: 30vh; background: #222; filter: grayscale(1) invert(0.9); flex-shrink: 0; }
-        
-        .dash { 
-            flex: 1; overflow-y: auto; padding: 15px;
-            display: flex; flex-direction: column; 
-            -webkit-overflow-scrolling: touch; 
-        }
-        
+        .dash { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; flex-shrink: 0; }
-        .stat-box { background: var(--card); padding: 10px; border: 1px solid #222; border-radius: 4px; text-align: center; }
+        .stat-box { background: #111; padding: 10px; border: 1px solid #222; border-radius: 8px; text-align: center; }
         .stat-label { font-size: 9px; color: #666; text-transform: uppercase; }
         .stat-val { font-size: 1.2rem; font-weight: bold; color: var(--accent); display: block; }
 
-        .clock { font-size: 3.2rem; text-align: center; font-weight: bold; margin: 5px 0; color: #fff; flex-shrink: 0; }
+        .clock { font-size: 3.5rem; text-align: center; font-weight: 900; margin: 10px 0; color: #fff; flex-shrink: 0; }
         
         .status-pill { 
-            padding: 15px; border-radius: 8px; text-align: center; 
-            font-weight: 900; font-size: 1.4rem; border: 3px solid #333; 
+            padding: 18px; border-radius: 12px; text-align: center; 
+            font-weight: 900; font-size: 1.5rem; border: 3px solid #222; 
             text-transform: uppercase; margin-bottom: 15px; flex-shrink: 0;
         }
 
-        .ledger { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .ledger td { padding: 12px 5px; border-bottom: 1px solid #1a1a1a; }
+        .ledger { width: 100%; border-collapse: collapse; font-size: 13px; font-family: monospace; }
+        .ledger td { padding: 15px 5px; border-bottom: 1px solid #111; }
         
-        .scroll-spacer { height: 100px; flex-shrink: 0; }
-
-        /* States */
-        .state-searching { background: #111; color: #444; border-color: #222; }
-        .state-at-point { background: rgba(241, 196, 15, 0.2); color: var(--accent); border-color: var(--accent); }
-        .state-hold { background: rgba(230, 126, 34, 0.3); color: var(--hold); border-color: var(--hold); animation: blink 0.5s infinite; }
+        /* State Classes */
+        .state-searching { background: #000; color: #333; border-color: #111; }
+        .state-at-point { background: rgba(251, 197, 0, 0.1); color: var(--accent); border-color: var(--accent); }
+        .state-hold { background: rgba(230, 126, 34, 0.2); color: var(--hold); border-color: var(--hold); animation: blink 0.5s infinite; }
         .state-go { background: var(--safe); color: #000; border-color: #fff; }
+        .state-danger { background: var(--danger); color: #fff; border-color: #fff; }
 
         #flash-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--safe); opacity:0; pointer-events:none; z-index:9999; transition:0.2s; }
         @keyframes blink { 50% { opacity: 0.3; } }
@@ -100,16 +91,18 @@
 
     <div id="init-barrier">
         <div class="setup-card">
-            <div style="color:var(--accent); font-weight:bold; letter-spacing: 1px;">ENTRY NUMBER</div>
+            <h1 class="brand-logo">GeoStamp</h1>
+            <span class="brand-sub">Live</span>
+            <div class="entry-label">Entry Number</div>
             <input type="number" id="car-input" class="entry-input" placeholder="--" inputmode="numeric">
-            <button class="btn-start" onclick="unlockSensors()">START TRACKING</button>
+            <button class="btn-unlock" onclick="unlockSensors()">Unlock System</button>
         </div>
     </div>
 
     <div id="flash-screen"></div>
 
     <div class="header">
-        <span id="event-label" style="color:var(--accent); font-weight:bold;">GEOSTAMPED READY</span>
+        <span id="event-label" style="color:var(--accent); font-weight:bold;">GEOSTAMP READY</span>
         <span id="gps-acc" style="color:#555">GPS: WAITING</span>
     </div>
 
@@ -120,10 +113,8 @@
             <div class="stat-box"><span class="stat-label">Odometer</span><span id="odo-val" class="stat-val">0.00 mi</span></div>
             <div class="stat-box"><span class="stat-label">Car #</span><span id="car-display" class="stat-val" style="color:#fff">--</span></div>
         </div>
-        
         <div class="clock" id="clock">00:00:00</div>
         <div id="status-pill" class="status-pill state-searching">AWAITING GPS</div>
-        
         <table class="ledger"><tbody id="ledger-body"></tbody></table>
         <div class="scroll-spacer"></div>
     </div>
@@ -150,7 +141,7 @@
     const db = getDatabase(app);
 
     const INTERNAL_ROUTE = {
-        "event_name": "GEOSTAMP v5.3",
+        "event_name": "GEOSTAMP LIVE v5.3",
         "controls": [
             { "id": "START", "coords": "52.896518, -4.404677", "type": "START" },
             { "id": "Scatter 1", "coords": "52.911908, -4.387015", "type": "SCATTER" },
@@ -173,14 +164,9 @@
     
     let lastPos = null, map, carMarker, points = [], holdTimer = null, currentTimerPoint = null, wakeLock = null;
 
-    // Load saved car number into input field on start
     window.onload = () => { if(carNum) document.getElementById('car-input').value = carNum; };
 
-    async function requestWakeLock() {
-        try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); } } catch (e) {}
-    }
-
-    window.unlockSensors = function() {
+    window.unlockSensors = async function() {
         const val = document.getElementById('car-input').value.trim();
         if (!val) { alert("Please enter Car Number"); return; }
         
@@ -190,8 +176,16 @@
         document.getElementById('car-display').textContent = carNum;
         document.getElementById('init-barrier').style.display = 'none';
         document.getElementById('odo-val').textContent = (totalMeters * 0.000621371).toFixed(2) + " mi";
-        document.getElementById('sndFound').play().catch(()=>{}); 
-        requestWakeLock();
+        
+        // Prep Audio
+        const audio = document.getElementById('sndFound');
+        audio.play().then(() => { audio.pause(); audio.currentTime = 0; }).catch(()=>{});
+
+        // Request WakeLock
+        if ('wakeLock' in navigator) {
+            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+        }
+        
         initTracking();
     };
 
@@ -219,7 +213,7 @@
             document.getElementById('gps-acc').textContent = `ACC: ${accuracy.toFixed(1)}m`;
 
             if (!map) {
-                map = L.map('map', {zoomControl:false}).setView(cur, 17);
+                map = L.map('map', {zoomControl:false, attributionControl: false}).setView(cur, 17);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
                 carMarker = L.circleMarker(cur, {color: '#007bff', radius: 8, fillOpacity: 1, weight:3}).addTo(map);
                 loadRoute();
@@ -228,9 +222,11 @@
                 map.panTo(cur);
             }
 
+            // Enhanced Odometer
             if (lastPos && startTime && !foundStamps["FINISH"]) {
-                const dist = map.distance(lastPos, cur);
-                if (dist > 1 && dist < 100) {
+                const dist = cur.distanceTo(lastPos);
+                // Filter out jitter (ignore movement < 2m or > 150m between updates)
+                if (dist > 2 && dist < 150) {
                     totalMeters += dist;
                     localStorage.setItem('h_odo', totalMeters);
                     document.getElementById('odo-val').textContent = (totalMeters * 0.000621371).toFixed(2) + " mi";
@@ -240,19 +236,19 @@
 
             points.forEach(p => {
                 if (p.time) return;
-                const dist = map.distance(cur, [p.lat, p.lon]);
+                const dist = cur.distanceTo([p.lat, p.lon]);
                 if (dist < 40) { 
                     if (p.type === 'PC') {
                         if (currentSpeedMph < 4) { 
                             if(!p.inZone) { p.inZone = true; startHold(p); } 
                         } else { 
-                            if(p.inZone) cancelHold(p, "SLOW DOWN!");
-                            else statusUpdate("SLOW DOWN!", "state-at-point");
+                            if(p.inZone) cancelHold(p, "TOO FAST!");
+                            else statusUpdate("SLOW DOWN", "state-at-point");
                         }
                     } else { stampPoint(p); }
                 } else if(p.inZone) cancelHold(p, "SEARCHING...");
             });
-        }, (err) => { statusUpdate("GPS ERR", "state-danger"); }, 
+        }, (err) => { statusUpdate("GPS LOST", "state-danger"); }, 
         { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 });
     }
 
