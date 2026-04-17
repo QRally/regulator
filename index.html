@@ -128,6 +128,7 @@
         const val = document.getElementById('car-input').value.trim();
         if (!val) return;
         carNum = val; localStorage.setItem('h_car', carNum);
+        document.getElementById('car-display').innerText = carNum;
         document.getElementById('init-barrier').style.display = 'none';
         initTracking();
     };
@@ -139,7 +140,6 @@
 
             if (!map) {
                 map = L.map('map', {zoomControl:false, attributionControl: false}).setView(cur, 17);
-                // Fix: Correct Dark Tiles
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
                 carMarker = L.circleMarker(cur, {color: 'var(--accent)', radius: 8, fillOpacity: 1}).addTo(map);
                 loadRoute();
@@ -162,49 +162,54 @@
         }, null, { enableHighAccuracy: true });
     }
 
-    /* IN YOUR COMPETITOR APP: Ensure stampPoint looks exactly like this */
-function stampPoint(p) {
-    const timeNow = new Date().toLocaleTimeString();
-    const isX = p.id.startsWith('X');
-    const flash = document.getElementById('flash-screen');
-    
-    foundStamps[p.id] = { time: timeNow, odo: totalMeters, ts: Date.now() };
-    localStorage.setItem('h_stamps', JSON.stringify(foundStamps));
+    function stampPoint(p) {
+        const timeNow = new Date().toLocaleTimeString();
+        const isX = p.id.startsWith('X');
+        const flash = document.getElementById('flash-screen');
+        const fStatus = document.getElementById('flash-status-text');
+        
+        // Internal logging
+        foundStamps[p.id] = { time: timeNow, odo: totalMeters, ts: Date.now() };
+        localStorage.setItem('h_stamps', JSON.stringify(foundStamps));
 
-    let avgSpeed = null;
-    if (p.id === "S2" && foundStamps["S1"]) {
-        const dist = totalMeters - foundStamps["S1"].odo;
-        const hours = (Date.now() - foundStamps["S1"].ts) / 3600000;
-        avgSpeed = ((dist * 0.000621371) / hours).toFixed(1);
-    }
+        // Speed Logic
+        let avgSpeed = null;
+        if (p.id === "S2" && foundStamps["S1"]) {
+            const dist = totalMeters - foundStamps["S1"].odo;
+            const hours = (Date.now() - foundStamps["S1"].ts) / 3600000;
+            avgSpeed = ((dist * 0.000621371) / hours).toFixed(1);
+        }
 
-    // Pushing data to Firebase with all metadata
-    update(ref(db, `GEOSCATTER/Car_${carNum}/${p.id}`), {
-        time: timeNow, 
-        miles: (totalMeters * 0.000621371).toFixed(2), 
-        avgSpeed: avgSpeed, 
-        violation: isX,
-        timestamp: Date.now()
-    });
+        // Start Clock logic
+        if (p.id === "START") { 
+            startTime = Date.now(); 
+            localStorage.setItem('h_start_time', startTime); 
+        }
 
-    // UI Feedback logic...
-    flash.style.display = 'flex';
-    setTimeout(() => flash.style.display = 'none', 2500);
-}
-
+        // UI Feedback
         flash.className = isX ? 'violation' : '';
-        document.getElementById('flash-status-text').innerText = isX ? 'BLACK SPOT VIOLATION' : p.id + ' STAMPED';
+        fStatus.innerText = isX ? 'BLACK SPOT VIOLATION' : p.id + ' STAMPED';
         flash.style.display = 'flex';
         setTimeout(() => flash.style.display = 'none', 2500);
         document.getElementById('sndFound').play().catch(()=>{});
-
-        if (p.id === "START") { startTime = Date.now(); localStorage.setItem('h_start_time', startTime); }
         
+        statusUpdate(isX ? "VIOLATION!" : "STAMPED!", isX ? "state-danger" : "state-go");
+
+        // Firebase Sync
         update(ref(db, `GEOSCATTER/Car_${carNum}/${p.id}`), {
-            time: timeNow, miles: (totalMeters * 0.000621371).toFixed(2), 
-            avgSpeed: avgSpeed, violation: isX, timestamp: Date.now()
+            time: timeNow, 
+            miles: (totalMeters * 0.000621371).toFixed(2), 
+            avgSpeed: avgSpeed, 
+            violation: isX,
+            timestamp: Date.now()
         });
+
         refreshLedger();
+    }
+
+    function statusUpdate(txt, cls) {
+        const s = document.getElementById('status-pill');
+        if(s) { s.textContent = txt; s.className = `status-pill ${cls}`; }
     }
 
     function loadRoute() {
@@ -219,7 +224,10 @@ function stampPoint(p) {
         document.getElementById('ledger-body').innerHTML = INTERNAL_ROUTE.controls.map(p => {
             const f = foundStamps[p.id];
             const isX = p.id.startsWith('X');
-            return `<tr style="color:${f ? (isX ? 'var(--danger)':'var(--safe)') : '#555'}"><td>${p.id}</td><td style="text-align:right;">${f ? f.time : '---'}</td></tr>`;
+            return `<tr style="color:${f ? (isX ? 'var(--danger)':'var(--safe)') : '#555'}">
+                <td>${p.id}</td>
+                <td style="text-align:right;">${f ? f.time : '---'}</td>
+            </tr>`;
         }).join('');
     }
 
