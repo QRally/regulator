@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GEOSTAMP LIVE v5.5</title>
+    <title>GEOSTAMP LIVE v5.6</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
@@ -26,7 +26,7 @@
         .stat-label { font-size: 9px; color: #666; text-transform: uppercase; }
         .stat-val { font-size: 1.2rem; font-weight: bold; color: var(--accent); display: block; }
         .clock { font-size: 3.5rem; text-align: center; font-weight: 900; margin: 10px 0; color: #fff; }
-        .status-pill { padding: 18px; border-radius: 12px; text-align: center; font-weight: 900; font-size: 1.5rem; border: 3px solid #222; text-transform: uppercase; margin-bottom: 15px; }
+        .status-pill { padding: 18px; border-radius: 12px; text-align: center; font-weight: 900; font-size: 1.5rem; border: 3px solid #222; text-transform: uppercase; margin-bottom: 15px; transition: all 0.3s; }
         .ledger { width: 100%; border-collapse: collapse; font-size: 13px; font-family: monospace; }
         .ledger td { padding: 15px 5px; border-bottom: 1px solid #111; }
         #flash-screen { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--safe); z-index:10000; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; pointer-events: none; }
@@ -62,7 +62,7 @@
     </div>
 
     <div class="header">
-        <span id="event-label" style="color:var(--accent); font-weight:bold;">LIVE v5.5</span>
+        <span id="event-label" style="color:var(--accent); font-weight:bold;">LIVE v5.6</span>
         <span id="gps-acc" style="color:#555">GPS: WAITING</span>
     </div>
 
@@ -74,7 +74,7 @@
             <div class="stat-box"><span class="stat-label">Car #</span><span id="car-display" class="stat-val" style="color:#fff">--</span></div>
         </div>
         <div class="clock" id="clock">00:00:00</div>
-        <div id="status-pill" class="status-pill state-searching">AWAITING GPS</div>
+        <div id="status-pill" class="status-pill state-searching">SEARCHING...</div>
         <table class="ledger"><tbody id="ledger-body"></tbody></table>
     </div>
 
@@ -102,13 +102,13 @@
     const db = getDatabase(app);
 
     const INTERNAL_ROUTE = {
-        "event_name": "GEOSTAMP LIVE v5.5",
+        "event_name": "CEIR AIL LAW LIVE",
         "controls": [
-            { "id": "START", "coords": "51.929104,-3.453494", "type": "START" },
-            { "id": "S1", "coords": "51.930701,-3.450100", "type": "SCATTER" },
-            { "id": "S2", "coords": "51.939403,-3.417954", "type": "SCATTER" },
-            { "id": "Control X", "coords": "51.946008,-3.411266", "type": "BLACKSPOT" },
-            { "id": "FINISH", "coords": "51.947976,-3.418534", "type": "FINISH" }
+            { "id": "START", "coords": "51.920308,-3.536551", "type": "START" },
+            { "id": "S1", "coords": "51.912019,-3.509613", "type": "SCATTER" },
+            { "id": "S2", "coords": "51.912464,-3.473641", "type": "SCATTER" },
+            { "id": "Control X", "coords": "51.911767,-3.518408", "type": "BLACKSPOT" },
+            { "id": "FINISH", "coords": "51.928614,-3.454836", "type": "FINISH" }
         ]
     };
 
@@ -116,7 +116,7 @@
     let totalMeters = parseFloat(localStorage.getItem('h_odo') || "0");
     let startTime = localStorage.getItem('h_start_time') ? parseInt(localStorage.getItem('h_start_time')) : null;
     let foundStamps = JSON.parse(localStorage.getItem('h_stamps') || "{}");
-    let lastPos = null, map, carMarker, points = [], holdTimer = null, rTimer;
+    let lastPos = null, map, carMarker, points = [], rTimer;
 
     window.startGlobalReset = () => {
         rTimer = setTimeout(() => { localStorage.clear(); location.reload(); }, 3000);
@@ -168,11 +168,9 @@
         const flash = document.getElementById('flash-screen');
         const fStatus = document.getElementById('flash-status-text');
         
-        // Internal logging
         foundStamps[p.id] = { time: timeNow, odo: totalMeters, ts: Date.now() };
         localStorage.setItem('h_stamps', JSON.stringify(foundStamps));
 
-        // Speed Logic
         let avgSpeed = null;
         if (p.id === "S2" && foundStamps["S1"]) {
             const dist = totalMeters - foundStamps["S1"].odo;
@@ -180,30 +178,28 @@
             avgSpeed = ((dist * 0.000621371) / hours).toFixed(1);
         }
 
-        // Start Clock logic
         if (p.id === "START") { 
             startTime = Date.now(); 
             localStorage.setItem('h_start_time', startTime); 
         }
 
-        // UI Feedback
+        // Trigger Flash
         flash.className = isX ? 'violation' : '';
         fStatus.innerText = isX ? 'BLACK SPOT VIOLATION' : p.id + ' STAMPED';
         flash.style.display = 'flex';
         setTimeout(() => flash.style.display = 'none', 2500);
         document.getElementById('sndFound').play().catch(()=>{});
         
+        // Brief Status Update then reset to Searching
         statusUpdate(isX ? "VIOLATION!" : "STAMPED!", isX ? "state-danger" : "state-go");
+        setTimeout(() => {
+            statusUpdate("SEARCHING...", "state-searching");
+        }, 3000);
 
-        // Firebase Sync
         update(ref(db, `GEOSCATTER/Car_${carNum}/${p.id}`), {
-            time: timeNow, 
-            miles: (totalMeters * 0.000621371).toFixed(2), 
-            avgSpeed: avgSpeed, 
-            violation: isX,
-            timestamp: Date.now()
+            time: timeNow, miles: (totalMeters * 0.000621371).toFixed(2), 
+            avgSpeed: avgSpeed, violation: isX, timestamp: Date.now()
         });
-
         refreshLedger();
     }
 
