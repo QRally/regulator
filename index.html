@@ -162,20 +162,35 @@
         }, null, { enableHighAccuracy: true });
     }
 
-    function stampPoint(p) {
-        const timeNow = new Date().toLocaleTimeString();
-        const isX = p.id.startsWith('X');
-        const flash = document.getElementById('flash-screen');
-        
-        foundStamps[p.id] = { time: timeNow, odo: totalMeters, ts: Date.now() };
-        localStorage.setItem('h_stamps', JSON.stringify(foundStamps));
+    /* IN YOUR COMPETITOR APP: Ensure stampPoint looks exactly like this */
+function stampPoint(p) {
+    const timeNow = new Date().toLocaleTimeString();
+    const isX = p.id.startsWith('X');
+    const flash = document.getElementById('flash-screen');
+    
+    foundStamps[p.id] = { time: timeNow, odo: totalMeters, ts: Date.now() };
+    localStorage.setItem('h_stamps', JSON.stringify(foundStamps));
 
-        let avgSpeed = null;
-        if (p.id === "S2" && foundStamps["S1"]) {
-            const dist = totalMeters - foundStamps["S1"].odo;
-            const hours = (Date.now() - foundStamps["S1"].ts) / 3600000;
-            avgSpeed = ((dist * 0.000621371) / hours).toFixed(1);
-        }
+    let avgSpeed = null;
+    if (p.id === "S2" && foundStamps["S1"]) {
+        const dist = totalMeters - foundStamps["S1"].odo;
+        const hours = (Date.now() - foundStamps["S1"].ts) / 3600000;
+        avgSpeed = ((dist * 0.000621371) / hours).toFixed(1);
+    }
+
+    // Pushing data to Firebase with all metadata
+    update(ref(db, `GEOSCATTER/Car_${carNum}/${p.id}`), {
+        time: timeNow, 
+        miles: (totalMeters * 0.000621371).toFixed(2), 
+        avgSpeed: avgSpeed, 
+        violation: isX,
+        timestamp: Date.now()
+    });
+
+    // UI Feedback logic...
+    flash.style.display = 'flex';
+    setTimeout(() => flash.style.display = 'none', 2500);
+}
 
         flash.className = isX ? 'violation' : '';
         document.getElementById('flash-status-text').innerText = isX ? 'BLACK SPOT VIOLATION' : p.id + ' STAMPED';
