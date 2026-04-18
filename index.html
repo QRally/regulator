@@ -33,7 +33,6 @@
         #flash-screen.violation { background: var(--danger); }
         .sponsor-name { font-size: 32px; font-weight: 900; color: #fff; margin: 0; }
         .state-searching { background: #000; color: #333; border-color: #111; }
-        .state-hold { background: rgba(230, 126, 34, 0.2); color: var(--hold); border-color: var(--hold); animation: blink 0.5s infinite; }
         .state-go { background: var(--safe); color: #000; border-color: #fff; }
         .state-danger { background: var(--danger); color: #fff; border-color: #fff; }
         @keyframes blink { 50% { opacity: 0.3; } }
@@ -86,8 +85,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    document.addEventListener('touchstart', (e) => { if (e.target.tagName === 'INPUT') e.target.focus(); }, {passive: true});
-
     const firebaseConfig = {
         apiKey: "AIzaSyCLi3NMmoJJCeJFGU4d-N4R47D0qM1r8nU",
         authDomain: "the-regulator-rally.firebaseapp.com",
@@ -102,63 +99,37 @@
     const db = getDatabase(app);
 
     const INTERNAL_ROUTE = {
-  "event_name": "Ceir ail Law",
-  "controls": [
-    {"id": "Scatter 1",
-      "coords": "52.146980,-4.057025",
-      "type": "SCATTER"
-    },
-    {"id": "Scatter 2",
-      "coords": "52.146965,-4.057020",
-      "type": "SCATTER"
-    },
-    {"id": "Scatter 3",
-      "coords": "52.146957,-4.057008",
-      "type": "SCATTER"
-    },
-    {"id": "Scatter 4",
-      "coords": "52.146957,-4.057008",
-      "type": "SCATTER"
-    },
-    {"id": "Scatter 5",
-      "coords": "52.146950,-4.056995",
-      "type": "SCATTER"
-    },
-    {"id": "Scatter 6",
-      "coords": "52.146950,-4.056995",
-      "type": "SCATTER"
-    },
-    {"id": "Scatter 7",
-      "coords": "52.146955,-4.056983",
-      "type": "SCATTER"
-    },
-    {"id": "Scatter 8",
-      "coords": "52.146947,-4.056992",
-      "type": "SCATTER"
-    },
-    {"id": "Scatter 9",
-      "coords": "52.146940,-4.056992",
-      "type": "SCATTER"
-    },
-    {"id": "Scatter 10",
-      "coords": "52.146933,-4.056990",
-      "type": "SCATTER"
-    },
-    {"id": "Scatter 11",
-      "coords": "52.146928,-4.056987",
-      "type": "SCATTER"
-    },
-    {"id": "Scatter 12",
-      "coords": "52.146928,-4.056987",
-      "type": "SCATTER"}
-  ]
+        "event_name": "CEIR AIL LAW LIVE",
+        "controls": [
+            { "id": "START", "coords": "51.920308,-3.536551", "type": "START" },
+            { "id": "S1", "coords": "51.912019,-3.509613", "type": "SCATTER" },
+            { "id": "S2", "coords": "51.912464,-3.473641", "type": "SCATTER" },
+            { "id": "Control X", "coords": "51.911767,-3.518408", "type": "BLACKSPOT" },
+            { "id": "FINISH", "coords": "51.928614,-3.454836", "type": "FINISH" }
+        ]
     };
 
     let carNum = localStorage.getItem('h_car') || "";
     let totalMeters = parseFloat(localStorage.getItem('h_odo') || "0");
     let startTime = localStorage.getItem('h_start_time') ? parseInt(localStorage.getItem('h_start_time')) : null;
     let foundStamps = JSON.parse(localStorage.getItem('h_stamps') || "{}");
-    let lastPos = null, map, carMarker, points = [], rTimer;
+    let lastPos = null, map, carMarker, points = [], rTimer, wakeLock = null;
+
+    // Helper to check if a point is a violation point
+    const isViolationPoint = (p) => p.type === 'BLACKSPOT' || p.id.toUpperCase().includes('X');
+
+    async function requestWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                wakeLock = await navigator.wakeLock.request('screen');
+                document.addEventListener('visibilitychange', async () => {
+                    if (wakeLock !== null && document.visibilityState === 'visible') {
+                        wakeLock = await navigator.wakeLock.request('screen');
+                    }
+                });
+            }
+        } catch (err) { console.warn("WakeLock failed:", err); }
+    }
 
     window.startGlobalReset = () => {
         rTimer = setTimeout(() => { localStorage.clear(); location.reload(); }, 3000);
@@ -169,6 +140,7 @@
     window.unlockSensors = async function() {
         const val = document.getElementById('car-input').value.trim();
         if (!val) return;
+        await requestWakeLock();
         carNum = val; localStorage.setItem('h_car', carNum);
         document.getElementById('car-display').innerText = carNum;
         document.getElementById('init-barrier').style.display = 'none';
@@ -206,7 +178,7 @@
 
     function stampPoint(p) {
         const timeNow = new Date().toLocaleTimeString();
-        const isX = p.id.startsWith('X');
+        const isX = isViolationPoint(p);
         const flash = document.getElementById('flash-screen');
         const fStatus = document.getElementById('flash-status-text');
         
@@ -225,18 +197,15 @@
             localStorage.setItem('h_start_time', startTime); 
         }
 
-        // Trigger Flash
         flash.className = isX ? 'violation' : '';
         fStatus.innerText = isX ? 'BLACK SPOT VIOLATION' : p.id + ' STAMPED';
         flash.style.display = 'flex';
         setTimeout(() => flash.style.display = 'none', 2500);
+        
         document.getElementById('sndFound').play().catch(()=>{});
         
-        // Brief Status Update then reset to Searching
         statusUpdate(isX ? "VIOLATION!" : "STAMPED!", isX ? "state-danger" : "state-go");
-        setTimeout(() => {
-            statusUpdate("SEARCHING...", "state-searching");
-        }, 3000);
+        setTimeout(() => { statusUpdate("SEARCHING...", "state-searching"); }, 3000);
 
         update(ref(db, `GEOSCATTER/Car_${carNum}/${p.id}`), {
             time: timeNow, miles: (totalMeters * 0.000621371).toFixed(2), 
@@ -261,8 +230,16 @@
     function refreshLedger() {
         document.getElementById('ledger-body').innerHTML = INTERNAL_ROUTE.controls.map(p => {
             const f = foundStamps[p.id];
-            const isX = p.id.startsWith('X');
-            return `<tr style="color:${f ? (isX ? 'var(--danger)':'var(--safe)') : '#555'}">
+            const isX = isViolationPoint(p);
+            
+            let rowColor = '#555';
+            if (f) {
+                rowColor = isX ? 'var(--danger)' : 'var(--safe)';
+            } else if (isX) {
+                rowColor = '#721c24'; // Warning color for blackspots in list
+            }
+
+            return `<tr style="color:${rowColor}">
                 <td>${p.id}</td>
                 <td style="text-align:right;">${f ? f.time : '---'}</td>
             </tr>`;
