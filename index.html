@@ -3,438 +3,468 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GeoStamp Live Tracker Master</title>
-    <!-- Leaflet CSS -->
+    <title>GEOSTAMP LIVE v5.8</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    
     <style>
-        :root {
-            --bg: #050505;
-            --card-bg: #111;
-            --accent: #f1c40f;
-            --text: #eee;
-            --safe: #2ecc71;
-            --danger: #e74c3c;
-            --border: #222;
+        :root { 
+            --bg: #000000; 
+            --card: #0a0a0a; 
+            --accent: #fbc500; 
+            --safe: #2ecc71; 
+            --hold: #e67e22; 
+            --danger: #e74c3c; 
         }
-        * { box-sizing: border-box; }
-        body {
-            font-family: monospace;
-            background: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            background: var(--bg); 
+            font-family: 'Inter', sans-serif; 
+            color: #eee; 
         }
-
-        /* --- LOGIN OVERLAY --- */
-        #login-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #000;
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
+        body { 
+            display: flex; 
+            flex-direction: column; 
         }
-        .brand-title {
-            font-size: 3rem;
-            font-weight: 900;
-            color: var(--accent);
-            margin: 0;
-            letter-spacing: -1px;
-            text-align: center;
+        #init-barrier { 
+            position: fixed; 
+            top:0; left:0; 
+            width:100%; height:100%; 
+            background:#000; 
+            z-index:10000; 
+            display:flex; 
+            align-items:center; 
+            justify-content:center; 
         }
-        .brand-sub {
-            font-size: 0.9rem;
-            color: #fff;
-            letter-spacing: 4px;
-            margin-bottom: 40px;
-            text-align: center;
+        .setup-card { 
+            text-align: center; 
+            width: 90%; 
+            max-width: 380px; 
         }
-        .car-input-box {
-            background: #111;
-            border: 2px solid #222;
-            border-radius: 20px;
-            width: 100%;
-            max-width: 320px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 25px;
+        .brand-logo { 
+            font-size: 4.2rem; 
+            font-weight: 900; 
+            color: var(--accent); 
+            margin: 0; 
+            letter-spacing: -3px; 
+            line-height: 0.9; 
         }
-        .car-input-box input {
-            background: transparent;
-            border: none;
-            outline: none;
-            color: #fff;
-            font-size: 2.5rem;
-            font-family: monospace;
-            font-weight: bold;
-            text-align: center;
-            width: 100%;
+        .entry-input { 
+            width: 100%; 
+            background: #111; 
+            border: 2px solid #222; 
+            color: var(--accent); 
+            font-size: 2.5rem; 
+            text-align: center; 
+            margin-bottom: 20px; 
+            padding: 25px 0; 
+            border-radius: 25px; 
+            outline: none; 
+            touch-action: manipulation; 
         }
-        .btn-unlock {
-            background: var(--accent);
-            color: #000;
-            border: none;
-            border-radius: 25px;
-            width: 100%;
-            max-width: 320px;
-            padding: 18px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            font-family: sans-serif;
-            letter-spacing: 1px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(241, 196, 15, 0.2);
+        .btn-unlock { 
+            background: var(--accent); 
+            color:#000; 
+            border:none; 
+            padding: 24px; 
+            font-size: 1.5rem; 
+            font-weight: 700; 
+            border-radius: 25px; 
+            cursor:pointer; 
+            width: 100%; 
+            text-transform: uppercase; 
+            touch-action: manipulation; 
         }
-        .btn-unlock:active {
-            transform: scale(0.98);
-            background: #d4ac0d;
+        .btn-hold-reset { 
+            background: transparent; 
+            color: #444; 
+            border: none; 
+            padding: 15px; 
+            width: 100%; 
+            margin-top: 20px; 
+            font-size: 10px; 
+            letter-spacing: 1px; 
+            cursor: pointer; 
+            transition: color 0.3s; 
+            touch-action: manipulation; 
         }
-        .hold-hint {
-            font-size: 10px;
-            color: #555;
-            letter-spacing: 2px;
-            margin-top: 15px;
+        .header { 
+            background: #111; 
+            padding: 12px; 
+            border-bottom: 2px solid var(--accent); 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 11px; 
+            flex-shrink: 0; 
+            font-family: monospace; 
         }
-
-        /* --- MAIN APP UI --- */
-        #map {
-            width: 100%;
-            height: 40vh;
-            background: #111;
-            border-bottom: 2px solid var(--border);
+        #map { 
+            height: 30vh; 
+            background: #000; 
+            flex-shrink: 0; 
         }
-        .status-bar {
-            background: #000;
-            padding: 8px 12px;
-            font-size: 11px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
+        .dash { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column; 
         }
-        .status-badge {
-            color: var(--safe);
-            font-weight: bold;
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 10px; 
+            margin-bottom: 10px; 
         }
-        .car-badge {
-            background: var(--accent);
-            color: #000;
-            padding: 2px 8px;
-            border-radius: 3px;
-            font-weight: bold;
-            cursor: pointer;
+        .stat-box { 
+            background: #111; 
+            padding: 10px; 
+            border: 1px solid #222; 
+            border-radius: 8px; 
+            text-align: center; 
         }
-        .controls-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
+        .stat-label { 
+            font-size: 9px; 
+            color: #666; 
+            text-transform: uppercase; 
         }
-        .control-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            margin-bottom: 6px;
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 4px;
+        .stat-val { 
+            font-size: 1.2rem; 
+            font-weight: bold; 
+            color: var(--accent); 
+            display: block; 
         }
-        .control-name {
-            font-weight: bold;
-            color: var(--safe);
-            font-size: 13px;
+        .clock { 
+            font-size: 3.5rem; 
+            text-align: center; 
+            font-weight: 900; 
+            margin: 10px 0; 
+            color: #fff; 
         }
-        .control-name.tc-type { color: var(--accent); }
-        .control-name.start-finish { color: #3498db; }
-        .control-time {
-            font-size: 13px;
-            letter-spacing: 1px;
+        .status-pill { 
+            padding: 18px; 
+            border-radius: 12px; 
+            text-align: center; 
+            font-weight: 900; 
+            font-size: 1.5rem; 
+            border: 3px solid #222; 
+            text-transform: uppercase; 
+            margin-bottom: 15px; 
+            transition: all 0.3s; 
         }
-        .control-time.empty { color: #444; }
-
-        /* Green Confirmation Banner Overlay */
-        #stamp-alert {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(46, 204, 113, 0.95);
-            color: #000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease-in-out;
+        .ledger { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 13px; 
+            font-family: monospace; 
         }
-        #stamp-alert.active {
-            opacity: 1;
-            pointer-events: auto;
+        .ledger td { 
+            padding: 15px 5px; 
+            border-bottom: 1px solid #111; 
         }
-        #stamp-alert h1 { font-size: 2rem; margin: 0; text-transform: uppercase; }
-        #stamp-alert p { font-size: 1.2rem; margin-top: 10px; font-weight: bold; }
+        #flash-screen { 
+            position: fixed; 
+            top:0; left:0; 
+            width:100%; height:100%; 
+            background: var(--safe); 
+            z-index:10000; 
+            display:none; 
+            flex-direction:column; 
+            align-items:center; 
+            justify-content:center; 
+            text-align:center; 
+            pointer-events: none; 
+        }
+        #flash-screen.hold { background: var(--hold); }
+        .sponsor-name { font-size: 32px; font-weight: 900; color: #fff; margin: 0; }
+        .state-searching { background: #000; color: #333; border-color: #111; }
+        .state-hold { background: rgba(230, 126, 34, 0.2); color: var(--hold); border-color: var(--hold); animation: blink 0.5s infinite; }
+        .state-go { background: var(--safe); color: #000; border-color: #fff; }
+        .state-finished { background: var(--accent); color: #000; border-color: #fff; }
+        @keyframes blink { 50% { opacity: 0.3; } }
     </style>
 </head>
 <body>
 
-    <!-- CREW NUMBER LOGIN OVERLAY -->
-    <div id="login-overlay">
-        <h1 class="brand-title">GeoStamp</h1>
-        <div class="brand-sub">BY RODGE</div>
-        
-        <div class="car-input-box">
-            <input type="number" id="car-number-input" placeholder="--" min="1" max="999" />
+    <!-- ENTRY OVERLAY -->
+    <div id="init-barrier">
+        <div class="setup-card">
+            <h1 class="brand-logo">GeoStamp</h1>
+            <div style="color:var(--accent); font-weight:900; margin-bottom:20px; letter-spacing:2px;">CEIR AIL LAW</div>
+            <input type="number" id="car-input" class="entry-input" placeholder="--" inputmode="numeric">
+            <button class="btn-unlock" onclick="unlockSensors()">Unlock System</button>
+            <button id="setupResetBtn" class="btn-hold-reset" 
+                onmousedown="startGlobalReset()" onmouseup="clearGlobalReset()" 
+                ontouchstart="startGlobalReset()" ontouchend="clearGlobalReset()">
+                HOLD 3s TO RESET LOCAL DATA
+            </button>
         </div>
-
-        <button class="btn-unlock" id="btn-unlock-system">UNLOCK SYSTEM</button>
-        <div class="hold-hint">ENTER CAR NUMBER TO START</div>
     </div>
 
-    <!-- STAMP CONFIRMATION OVERLAY -->
-    <div id="stamp-alert">
-        <h1 id="alert-title">STAMP REGISTERED</h1>
-        <p id="alert-detail">CONTROL</p>
+    <!-- FLASH SCREEN ALERT -->
+    <div id="flash-screen">
+        <div style="font-size: 12px; letter-spacing: 2px; color: rgba(255,255,255,0.7);">SUPPORTED BY</div>
+        <h1 class="sponsor-name">CEIR AIL LAW</h1>
+        <div id="flash-status-text" style="font-size: 18px; font-weight: bold; margin-top: 15px; background: rgba(0,0,0,0.2); padding: 5px 20px; border-radius: 20px;">STAMPED</div>
     </div>
 
-    <!-- MAIN APP BAR -->
-    <div class="status-bar">
-        <div>
-            <span class="status-badge" id="live-indicator">LIVE</span>
-            <span class="car-badge" id="active-car-display" title="Click to change car">CAR --</span>
-        </div>
-        <span id="acc-display">ACC: --m</span>
+    <!-- HEADER STATUS BAR -->
+    <div class="header">
+        <span id="event-label" style="color:var(--accent); font-weight:bold;">LIVE v5.8</span>
+        <span id="gps-acc" style="color:#555">GPS: WAITING</span>
     </div>
 
+    <!-- MAP CONTAINER -->
     <div id="map"></div>
 
-    <div class="controls-container" id="controls-list">
-        <!-- Control items generated dynamically -->
+    <!-- DASHBOARD PANEL -->
+    <div class="dash">
+        <div class="stats-grid">
+            <div class="stat-box"><span class="stat-label">Odometer</span><span id="odo-val" class="stat-val">0.00 mi</span></div>
+            <div class="stat-box"><span class="stat-label">Car #</span><span id="car-display" class="stat-val" style="color:#fff">--</span></div>
+        </div>
+        <div class="clock" id="clock">00:00:00</div>
+        <div id="status-pill" class="status-pill state-searching">SEARCHING...</div>
+        <table class="ledger"><tbody id="ledger-body"></tbody></table>
     </div>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, update, onValue, off } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    <audio id="sndFound" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3" preload="auto"></audio>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyCLi3NMmoJJCeJFGU4d-N4R47D0qM1r8nU",
-            authDomain: "the-regulator-rally.firebaseapp.com",
-            databaseURL: "https://the-regulator-rally-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "the-regulator-rally",
-            storageBucket: "the-regulator-rally.appspot.com",
-            messagingSenderId: "1026958520151",
-            appId: "1:1026958520151:web:166551b9b18361668f447d"
-        };
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        const GEOFENCE_RADIUS_METERS = 30;
+    const firebaseConfig = {
+        apiKey: "AIzaSyCLi3NMmoJJCeJFGU4d-N4R47D0qM1r8nU",
+        authDomain: "the-regulator-rally.firebaseapp.com",
+        databaseURL: "https://the-regulator-rally-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "the-regulator-rally",
+        storageBucket: "the-regulator-rally.appspot.com",
+        messagingSenderId: "1026958520151",
+        appId: "1:1026958520151:web:166551b9b18361668f447d"
+    };
 
-        const ROUTE_CONTROLS = [
-            { id: "START", type: "START", lat: 52.011078, lng: -3.774911 },
-            { id: "CONTROL 3", type: "CONTROL", lat: 52.0050, lng: -4.0020 },
-            { id: "CONTROL 4", type: "CONTROL", lat: 52.0100, lng: -4.0040 },
-            { id: "CONTROL 5", type: "CONTROL", lat: 52.0150, lng: -4.0060 },
-            { id: "CONTROL 6", type: "CONTROL", lat: 52.0200, lng: -4.0080 },
-            { id: "CONTROL 7", type: "CONTROL", lat: 52.0250, lng: -4.0100 },
-            { id: "CONTROL 8", type: "CONTROL", lat: 52.0300, lng: -4.0120 },
-            { id: "CONTROL 9", type: "CONTROL", lat: 52.0350, lng: -4.0140 },
-            { id: "TC 1", type: "TC", lat: 51.985501, lng: -3.818797 },
-            { id: "TC 2", type: "TC", lat: 52.0450, lng: -4.0180 },
-            { id: "TC 3", type: "TC", lat: 52.0500, lng: -4.0200 },
-            { id: "TC 4", type: "TC", lat: 52.0550, lng: -4.0220 },
-            { id: "FINISH", type: "FINISH", lat: 52.0600, lng: -4.0240 }
-        ];
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-        // State Variables
-        let currentCarNum = localStorage.getItem('geostamp_car_num') || null;
-        let carRef = null;
-        let dbListener = null;
-        let currentStamps = {};
+    const INTERNAL_ROUTE = {
+        "event_name": "Geostamp",
+        "controls": [
+            { "id": "START", "coords": "51.968410,-3.871397", "type": "START" },
+            { "id": "PC 1", "coords": "52.003216,-3.753876", "type": "PC" },
+            { "id": "PC 2", "coords": "52.002287,-3.746554", "type": "PC" },
+            { "id": "PC 3", "coords": "51.999023,-3.745674", "type": "PC" },
+            { "id": "PC 4", "coords": "51.994483,-3.740490", "type": "PC" },
+            { "id": "PC 5", "coords": "51.992824,-3.735708", "type": "PC" },
+            { "id": "PC 6", "coords": "51.989903,-3.730848", "type": "PC" },
+            { "id": "PC 7", "coords": "51.980919,-3.698419", "type": "PC" },
+            { "id": "PC 8", "coords": "51.957682,-3.652722", "type": "PC" },
+            { "id": "PC 9", "coords": "51.956014,-3.645694", "type": "PC" },
+            { "id": "PC 10", "coords": "51.952107,-3.608636", "type": "PC" },
+            { "id": "TC 1", "coords": "51.972754,-3.659636", "type": "TC" },
+            { "id": "TC 2", "coords": "51.977118,-3.660202", "type": "TC" },
+            { "id": "TC 3", "coords": "51.980595,-3.659992", "type": "TC" },
+            { "id": "TC 4", "coords": "51.984298,-3.663602", "type": "TC" },
+            { "id": "TC 5", "coords": "51.987908,-3.664411", "type": "TC" },
+            { "id": "TC 6", "coords": "51.991235,-3.662623", "type": "TC" },
+            { "id": "TC 7", "coords": "51.993762,-3.659719", "type": "TC" },
+            { "id": "TC 8", "coords": "51.995523,-3.657730", "type": "TC" },
+            { "id": "TC 9", "coords": "52.000596,-3.652530", "type": "TC" },
+            { "id": "TC 10", "coords": "52.004579,-3.650089", "type": "TC" },
+            { "id": "FINISH", "coords": "52.009662,-3.646241", "type": "FINISH" }
+        ]
+    };
 
-        // Audio Context Synthesizer
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playBeepSound() {
-            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.5);
+    let carNum = localStorage.getItem('h_car') || "";
+    let totalMeters = parseFloat(localStorage.getItem('h_odo') || "0");
+    let startTime = localStorage.getItem('h_start_time') ? parseInt(localStorage.getItem('h_start_time')) : null;
+    let finishTime = localStorage.getItem('h_finish_time') ? parseInt(localStorage.getItem('h_finish_time')) : null;
+    let foundStamps = JSON.parse(localStorage.getItem('h_stamps') || "{}");
+    let lastPos = null, map, carMarker, points = [], rTimer, wakeLock = null;
+    let currentSpeedMph = 0;
+
+    async function requestWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                wakeLock = await navigator.wakeLock.request('screen');
+                document.addEventListener('visibilitychange', async () => {
+                    if (wakeLock !== null && document.visibilityState === 'visible') {
+                        wakeLock = await navigator.wakeLock.request('screen');
+                    }
+                });
+            }
+        } catch (err) { console.warn("WakeLock failed:", err); }
+    }
+
+    window.startGlobalReset = () => {
+        rTimer = setTimeout(() => { localStorage.clear(); location.reload(); }, 3000);
+        document.getElementById('setupResetBtn').innerText = "KEEP HOLDING...";
+    };
+    window.clearGlobalReset = () => { clearTimeout(rTimer); document.getElementById('setupResetBtn').innerText = "HOLD 3s TO RESET LOCAL DATA"; };
+
+    window.unlockSensors = async function() {
+        const val = document.getElementById('car-input').value.trim();
+        if (!val) return;
+        await requestWakeLock();
+        carNum = val; localStorage.setItem('h_car', carNum);
+        document.getElementById('car-display').innerText = carNum;
+        document.getElementById('init-barrier').style.display = 'none';
+        initTracking();
+    };
+
+    function formatDuration(ms) {
+        const totalSec = Math.floor(ms / 1000);
+        const hrs = Math.floor(totalSec / 3600).toString().padStart(2, '0');
+        const mins = Math.floor((totalSec % 3600) / 60).toString().padStart(2, '0');
+        const secs = (totalSec % 60).toString().padStart(2, '0');
+        return `${hrs}:${mins}:${secs}`;
+    }
+
+    function initTracking() {
+        // Pre-fill clock display if already finished
+        if (startTime && finishTime) {
+            document.getElementById('clock').textContent = formatDuration(finishTime - startTime);
+            statusUpdate("RALLY FINISHED", "state-finished");
         }
 
-        function triggerConfirmationUI(label, time) {
-            playBeepSound();
-            const alertBox = document.getElementById('stamp-alert');
-            document.getElementById('alert-detail').textContent = `${label} AT ${time}`;
-            alertBox.classList.add('active');
-
-            setTimeout(() => {
-                alertBox.classList.remove('active');
-            }, 2000);
-        }
-
-        // Initialize Map
-        const map = L.map('map', { zoomControl: false }).setView([52.0000, -4.0000], 12);
-        
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
-
-        const userMarker = L.circleMarker([0, 0], {
-            color: '#f1c40f',
-            fillColor: '#f1c40f',
-            fillOpacity: 0.9,
-            radius: 8
-        }).addTo(map);
-
-        ROUTE_CONTROLS.forEach(ctrl => {
-            const markerColor = ctrl.type === 'TC' ? '#f1c40f' : (ctrl.type === 'CONTROL' ? '#2ecc71' : '#3498db');
-            L.circleMarker([ctrl.lat, ctrl.lng], {
-                color: markerColor,
-                fillColor: markerColor,
-                fillOpacity: 0.4,
-                radius: 6
-            }).addTo(map).bindPopup(`<b>${ctrl.id}</b><br>${ctrl.type}`);
-        });
-
-        function renderUI() {
-            const container = document.getElementById('controls-list');
-            container.innerHTML = '';
-
-            ROUTE_CONTROLS.forEach(ctrl => {
-                const rec = currentStamps[ctrl.id];
-                let typeClass = '';
-                if (ctrl.type === 'TC') typeClass = 'tc-type';
-                if (ctrl.type === 'START' || ctrl.type === 'FINISH') typeClass = 'start-finish';
-                
-                const row = document.createElement('div');
-                row.className = 'control-row';
-                row.innerHTML = `
-                    <span class="control-name ${typeClass}">${ctrl.id}</span>
-                    <span class="control-time ${rec ? '' : 'empty'}">${rec ? rec.time : '---'}</span>
-                `;
-                container.appendChild(row);
-            });
-        }
-
-        // --- CAR LOGIN & SWITCHING LOGIC ---
-        const loginOverlay = document.getElementById('login-overlay');
-        const carInput = document.getElementById('car-number-input');
-        const btnUnlock = document.getElementById('btn-unlock-system');
-        const activeCarDisplay = document.getElementById('active-car-display');
-
-        function bindCar(num) {
-            if (!num) return;
-            currentCarNum = num;
-            localStorage.setItem('geostamp_car_num', num);
-            activeCarDisplay.textContent = `CAR ${num}`;
+        navigator.geolocation.watchPosition(pos => {
+            const cur = L.latLng(pos.coords.latitude, pos.coords.longitude);
+            currentSpeedMph = (pos.coords.speed || 0) * 2.23694;
             
-            // Unsubscribe existing DB listener if switching cars
-            if (carRef && dbListener) { off(carRef); }
+            document.getElementById('gps-acc').textContent = `ACC: ${pos.coords.accuracy.toFixed(1)}m`;
 
-            // Attach Firebase reference to selected car
-            carRef = ref(db, `GEOSCATTER/CAR_${num}`);
-            dbListener = onValue(carRef, (snapshot) => {
-                currentStamps = snapshot.val() || {};
-                renderUI();
-            });
+            if (!map) {
+                map = L.map('map', {zoomControl:false, attributionControl: false}).setView(cur, 17);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19
+                }).addTo(map);
 
-            loginOverlay.style.display = 'none';
-        }
-
-        btnUnlock.addEventListener('click', () => {
-            const val = carInput.value.trim();
-            if (val && parseInt(val) > 0) {
-                if (audioCtx.state === 'suspended') { audioCtx.resume(); }
-                bindCar(val);
-            } else {
-                alert('Please enter a valid Car Number.');
+                carMarker = L.circleMarker(cur, {color: '#e74c3c', radius: 8, fillOpacity: 1, fillColor: '#e74c3c'}).addTo(map);
+                loadRoute();
+            } else { 
+                carMarker.setLatLng(cur); 
+                map.panTo(cur); 
             }
-        });
 
-        activeCarDisplay.addEventListener('click', () => {
-            if (confirm('Change Car Number?')) {
-                carInput.value = currentCarNum;
-                loginOverlay.style.display = 'flex';
+            // Odometer tracking stops once FINISH is logged
+            if (lastPos && startTime && !foundStamps["FINISH"]) {
+                const d = cur.distanceTo(lastPos);
+                if (d > 2 && d < 150) {
+                    totalMeters += d;
+                    localStorage.setItem('h_odo', totalMeters);
+                    document.getElementById('odo-val').textContent = (totalMeters * 0.000621371).toFixed(2) + " mi";
+                }
             }
-        });
+            lastPos = cur;
 
-        // Restore active car session if cached
-        if (currentCarNum) {
-            bindCar(currentCarNum);
-        } else {
-            loginOverlay.style.display = 'flex';
-        }
-
-        // --- GEOFENCING LOGIC ---
-        function getDistanceMeters(lat1, lon1, lat2, lon2) {
-            const R = 6371e3;
-            const φ1 = lat1 * Math.PI / 180;
-            const φ2 = lat2 * Math.PI / 180;
-            const Δφ = (lat2 - lat1) * Math.PI / 180;
-            const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                      Math.cos(φ1) * Math.cos(φ2) *
-                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-            return R * c;
-        }
-
-        function checkGeofences(lat, lng) {
-            if (!carRef) return;
-            const nowTimeString = new Date().toTimeString().split(' ')[0];
-
-            ROUTE_CONTROLS.forEach(ctrl => {
-                if (!currentStamps[ctrl.id]) {
-                    const dist = getDistanceMeters(lat, lng, ctrl.lat, ctrl.lng);
-                    if (dist <= GEOFENCE_RADIUS_METERS) {
-                        const updateData = {};
-                        updateData[ctrl.id] = {
-                            time: nowTimeString,
-                            lat: lat,
-                            lng: lng
-                        };
-                        update(carRef, updateData);
-                        triggerConfirmationUI(ctrl.id, nowTimeString);
+            points.forEach(p => {
+                if (foundStamps[p.id]) return;
+                const dist = cur.distanceTo([p.lat, p.lon]);
+                
+                if (dist < 40) {
+                    // TC requires speed < 1.5 mph (Mandatory Stop)
+                    if (p.type === "TC") {
+                        if (currentSpeedMph < 1.5) {
+                            stampPoint(p);
+                        } else {
+                            statusUpdate(`${p.id}: STOP MANDATORY`, "state-hold");
+                        }
+                    } else {
+                        // START, PC (Drive Through), and FINISH stamp immediately
+                        stampPoint(p);
                     }
                 }
             });
+        }, null, { enableHighAccuracy: true });
+    }
+
+    function stampPoint(p) {
+        const timeNow = new Date().toLocaleTimeString();
+        const flash = document.getElementById('flash-screen');
+        const fStatus = document.getElementById('flash-status-text');
+        
+        foundStamps[p.id] = { time: timeNow, odo: totalMeters, ts: Date.now() };
+        localStorage.setItem('h_stamps', JSON.stringify(foundStamps));
+
+        if (p.id === "START") { 
+            startTime = Date.now(); 
+            localStorage.setItem('h_start_time', startTime); 
         }
 
-        if ("geolocation" in navigator) {
-            navigator.geolocation.watchPosition(
-                (pos) => {
-                    const { latitude, longitude, accuracy } = pos.coords;
-                    const latLng = [latitude, longitude];
-                    
-                    userMarker.setLatLng(latLng);
-                    map.panTo(latLng);
-                    document.getElementById('acc-display').textContent = `ACC: ${accuracy.toFixed(1)}m`;
-
-                    checkGeofences(latitude, longitude);
-                },
-                (err) => console.error(err),
-                { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
-            );
+        if (p.id === "FINISH") {
+            finishTime = Date.now();
+            localStorage.setItem('h_finish_time', finishTime);
+            if (startTime) {
+                document.getElementById('clock').textContent = formatDuration(finishTime - startTime);
+            }
         }
-    </script>
+
+        flash.className = '';
+        fStatus.innerText = p.id + ' STAMPED';
+        flash.style.display = 'flex';
+        setTimeout(() => flash.style.display = 'none', 2500);
+        
+        document.getElementById('sndFound').play().catch(()=>{});
+        
+        statusUpdate(p.id === "FINISH" ? "RALLY FINISHED" : "STAMPED!", p.id === "FINISH" ? "state-finished" : "state-go");
+        
+        if (p.id !== "FINISH") {
+            setTimeout(() => { statusUpdate("SEARCHING...", "state-searching"); }, 3000);
+        }
+
+        update(ref(db, `GEOSCATTER/Car_${carNum}/${p.id}`), {
+            time: timeNow, 
+            miles: (totalMeters * 0.000621371).toFixed(2), 
+            timestamp: Date.now()
+        });
+        refreshLedger();
+    }
+
+    function statusUpdate(txt, cls) {
+        const s = document.getElementById('status-pill');
+        if(s) { s.textContent = txt; s.className = `status-pill ${cls}`; }
+    }
+
+    function loadRoute() {
+        points = INTERNAL_ROUTE.controls.map(c => {
+            const [lat, lon] = c.coords.split(',').map(n => parseFloat(n.trim()));
+            return { id: c.id, lat, lon, type: c.type, circle: L.circle([lat, lon], { radius: 40, color: '#e74c3c' }).addTo(map) };
+        });
+        refreshLedger();
+    }
+
+    function refreshLedger() {
+        document.getElementById('ledger-body').innerHTML = INTERNAL_ROUTE.controls.map(p => {
+            const f = foundStamps[p.id];
+            
+            let rowColor = '#555';
+            if (f) {
+                rowColor = 'var(--safe)';
+            } else if (p.type === "TC") {
+                rowColor = 'var(--hold)';
+            }
+
+            return `<tr style="color:${rowColor}">
+                <td>${p.id}</td>
+                <td style="text-align:right;">${f ? f.time : '---'}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // Master Clock Loop: Updates every second until FINISH is stamped
+    setInterval(() => {
+        if (startTime && !foundStamps["FINISH"]) {
+            const diff = Date.now() - startTime;
+            document.getElementById('clock').textContent = formatDuration(diff);
+        }
+    }, 1000);
+</script>
 </body>
 </html>
