@@ -196,12 +196,12 @@
                 const dist = cur.distanceTo([p.lat, p.lon]);
                 
                 if (dist < 40) {
-                    // NEW: Mandate stop check for PCs
-                    if (p.type === "PC") {
+                    // NEW: Mandate stop check for TCs
+                    if (t.type === "TC") {
                         if (currentSpeedMph < 1.5) {
                             stampPoint(p);
                         } else {
-                            statusUpdate("PC: STOP MANDATORY", "state-hold");
+                            statusUpdate("TC: STOP MANDATORY", "state-hold");
                         }
                     } else {
                         stampPoint(p);
