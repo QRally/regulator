@@ -253,6 +253,10 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    // CONFIGURABLE TC SPEED THRESHOLD
+    // 4.0 mph allows smooth entry without needing a complete 0.0 mph dead stop
+    const TC_SPEED_THRESHOLD_MPH = 4.0;
+
     const INTERNAL_ROUTE = {
         "event_name": "Geostamp",
         "controls": [
@@ -327,7 +331,6 @@
     }
 
     function initTracking() {
-        // Pre-fill clock display if already finished
         if (startTime && finishTime) {
             document.getElementById('clock').textContent = formatDuration(finishTime - startTime);
             statusUpdate("RALLY FINISHED", "state-finished");
@@ -335,7 +338,13 @@
 
         navigator.geolocation.watchPosition(pos => {
             const cur = L.latLng(pos.coords.latitude, pos.coords.longitude);
-            currentSpeedMph = (pos.coords.speed || 0) * 2.23694;
+            
+            // Safely parse speed in MPH with fallback check
+            if (pos.coords.speed !== null && !isNaN(pos.coords.speed)) {
+                currentSpeedMph = pos.coords.speed * 2.23694;
+            } else {
+                currentSpeedMph = 0;
+            }
             
             document.getElementById('gps-acc').textContent = `ACC: ${pos.coords.accuracy.toFixed(1)}m`;
 
@@ -353,7 +362,6 @@
                 map.panTo(cur); 
             }
 
-            // Odometer tracking stops once FINISH is logged
             if (lastPos && startTime && !foundStamps["FINISH"]) {
                 const d = cur.distanceTo(lastPos);
                 if (d > 2 && d < 150) {
@@ -369,15 +377,14 @@
                 const dist = cur.distanceTo([p.lat, p.lon]);
                 
                 if (dist < 40) {
-                    // TC requires speed < 1.5 mph (Mandatory Stop)
                     if (p.type === "TC") {
-                        if (currentSpeedMph < 1.5) {
+                        // Checks speed against configured threshold (4.0 mph)
+                        if (currentSpeedMph <= TC_SPEED_THRESHOLD_MPH) {
                             stampPoint(p);
                         } else {
-                            statusUpdate(`${p.id}: STOP MANDATORY`, "state-hold");
+                            statusUpdate(`${p.id}: SLOW DOWN (<${TC_SPEED_THRESHOLD_MPH}MPH)`, "state-hold");
                         }
                     } else {
-                        // START, PC (Drive Through), and FINISH stamp immediately
                         stampPoint(p);
                     }
                 }
@@ -458,7 +465,6 @@
         }).join('');
     }
 
-    // Master Clock Loop: Updates every second until FINISH is stamped
     setInterval(() => {
         if (startTime && !foundStamps["FINISH"]) {
             const diff = Date.now() - startTime;
